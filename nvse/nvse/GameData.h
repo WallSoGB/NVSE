@@ -173,6 +173,7 @@ struct ModInfo		// referred to by game as TESFile
 	bool IsLoaded() const { return true; }
 
 	bool IsSmall() const { return (flags & 0x100) != 0; }
+	bool IsOverlay() const { return (flags & 0x200) != 0; }
 
 #if RUNTIME
 	/*** used by TESForm::LoadForm() among others ***/
