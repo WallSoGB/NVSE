@@ -34,7 +34,7 @@ UInt8 DataHandler::GetModIndex(const char* modName)
 
 const char* DataHandler::GetNthModName(UInt32 modIndex)
 {
-	if (DataHandler::bHasExtendedPlugins && modIndex == 0xFE)
+	if (bHasExtendedPlugins && modIndex == 0xFE)
 		return "Small Mod";
 
 	if (modList.GetNormalModCount() <= modIndex || modIndex == 0xFF)
@@ -61,8 +61,7 @@ struct IsModLoaded
 
 UInt8 DataHandler::GetActiveModCount() const
 {
-	UInt32 count = modList.GetNormalModCount();
-	return count;
+	return modList.GetNormalModCount();
 }
 
 ModInfo::ModInfo() {
@@ -74,6 +73,9 @@ ModInfo::~ModInfo() {
 };
 
 ModInfo* ModList::GetMod(UInt8 modIndex) const {
+	if (modIndex >= GetNormalModCount())
+		return nullptr;
+
 	if (DataHandler::bHasExtendedPlugins)
 		return normalFiles.GetAt(modIndex);
 
@@ -81,6 +83,9 @@ ModInfo* ModList::GetMod(UInt8 modIndex) const {
 }
 
 ModInfo* ModList::GetSmallMod(UInt16 modIndex) const {
+	if (modIndex >= GetSmallModCount())
+		return nullptr;
+
 	if (DataHandler::bHasExtendedPlugins)
 		return smallFiles.GetAt(modIndex);
 
@@ -88,6 +93,9 @@ ModInfo* ModList::GetSmallMod(UInt16 modIndex) const {
 }
 
 ModInfo* ModList::GetOverlayMod(UInt32 modIndex) const {
+	if (modIndex >= GetOverlayModCount())
+		return nullptr;
+
 	if (DataHandler::bHasExtendedPlugins)
 		return overlayFiles.GetAt(modIndex);
 
