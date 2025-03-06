@@ -161,7 +161,7 @@ struct ModInfo		// referred to by game as TESFile
 	UInt32								unk404;				// 404
 	UInt32								unk408;				// 408
 	UInt8								modIndex;			// 40C init to 0xFF
-	UInt8								pad40D[3];
+	UInt16								smallIndex;
 	String								author;				// 410
 	String								description;		// 418
 	void								* dataBuf;			// 420 
@@ -172,6 +172,8 @@ struct ModInfo		// referred to by game as TESFile
 	// In Editor: 430 = ONAM array and 434 ONAM array count. Allocated at 0438
 	
 	bool IsLoaded() const { return true; }
+
+	bool IsSmall() const { return (flags & 0x100) != 0; }
 
 #if RUNTIME
 	/*** used by TESForm::LoadForm() among others ***/
@@ -190,14 +192,51 @@ STATIC_ASSERT(offsetof(ModInfo, unk260) == 0x260);
 STATIC_ASSERT(sizeof(ModInfo) == 0x42C);
 
 
+struct ModArray {
+	void* vtable;
+	ModInfo** data;
+	UInt32	size;
+	UInt32	capacity;
+
+	ModInfo* GetAt(UInt32 idx) const {
+		return data[idx];
+	}
+
+	UInt32 GetSize() const {
+		return size;
+	}
+};
 
 struct ModList
 {
-	tList<ModInfo>		modInfoList;		// 00
-	UInt32				loadedModCount;		// 08
-	ModInfo*			loadedMods[0xFF];	// 0C
+	union {
+		struct {
+			ModArray	normalFiles;
+			ModArray	smallFiles;
+			ModArray	overlayFiles;
+			UInt32		padding[0xF4];
+		};
+
+		struct {
+			uint32_t	loadedModCount;
+			ModInfo*	loadedMods[0xFF];
+		};
+	};
+
+
+	ModInfo* GetMod(UInt8 modIndex) const;
+
+	ModInfo* GetSmallMod(UInt16 modIndex) const;
+
+	ModInfo* GetOverlayMod(UInt32 modIndex) const;
+
+	UInt32 GetNormalModCount() const;
+
+	UInt32 GetSmallModCount() const;
+
+	UInt32 GetOverlayModCount() const;
 };
-STATIC_ASSERT(sizeof(ModList) == 0x408);
+STATIC_ASSERT(sizeof(ModList) == 0x400);
 
 // 5B8
 class DataHandler
@@ -269,10 +308,10 @@ public:
 	TESRegionList					* regionList;			// 1D8
 	NiTArray<TESObjectCELL*>		cellArray;				// 1DC
 	NiTArray<BGSAddonNode*>			addonArray;				// 1EC
-
 	UInt32							unk1FC[0x3];			// 1FC	208 looks like next created refID
 	UInt32							nextCreatedRefID;		// 208	Init'd to FF000800 (in GECK init'd to nn000800)
 	ModInfo*						activeFile;					// 20C	last unselected mod in modList. GECK: active ESM
+	tList<ModInfo>					modInfoList;
 	ModList							modList;				// 210
 	UInt8							unk618;					// 618	5A4
 	UInt8							unk619;					// 619
@@ -294,7 +333,9 @@ public:
 	UInt32							unk638;					// 638
 
 	static DataHandler* Get();
-	const ModInfo ** GetActiveModList();		// returns array of modEntry* corresponding to loaded mods sorted by mod index
+
+	static bool bHasExtendedPlugins;
+
 	const ModInfo* LookupModByName(const char* modName);
 	UInt8 GetModIndex(const char* modName);
 	UInt8 GetActiveModCount() const;
@@ -310,6 +351,6 @@ public:
 	TESQuest* GetQuestByName(const char* questName);
 };
 
-STATIC_ASSERT(offsetof(DataHandler, modList) == 0x210);
+STATIC_ASSERT(offsetof(DataHandler, modList) == 0x218);
 STATIC_ASSERT(offsetof(DataHandler, unk618) == 0x618);
 STATIC_ASSERT(sizeof(DataHandler) == 0x63C);

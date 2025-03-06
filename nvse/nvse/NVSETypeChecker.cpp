@@ -173,13 +173,16 @@ void NVSETypeChecker::VisitVarDeclStmt(VarDeclStmt* stmt) {
 
 		// Warn if name shadows a form
 		if (auto form = GetFormByID(name.lexeme.c_str())) {
-			auto modName = DataHandler::Get()->GetActiveModList()[form->GetModIndex()]->name;
+			UInt8 modIndex = form->GetModIndex();
+			if (DataHandler::Get()->modList.GetNormalModCount() > modIndex) {
+				auto modName = DataHandler::Get()->modList.GetMod(modIndex)->name;
 #ifdef EDITOR
-			CompInfo("[line %d] Info: Variable with name '%s' shadows a form with the same name from mod '%s'\n",
-				name.line, name.lexeme.c_str(), modName);
+				CompInfo("[line %d] Info: Variable with name '%s' shadows a form with the same name from mod '%s'\n",
+					name.line, name.lexeme.c_str(), modName);
 #else
-			CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
+				CompInfo("Info: Variable with name '%s' shadows a form with the same name from mod '%s'. This is NOT an error. Do not contact the mod author.", name.lexeme.c_str(), modName);
 #endif
+			}
 		}
 
 		if (auto shadowed = scopes.top()->resolveVariable(name.lexeme, true)) {

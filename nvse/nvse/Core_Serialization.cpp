@@ -33,17 +33,17 @@ void Core_SaveCallback(void * reserved)
 {
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 	DataHandler* dhand = DataHandler::Get();
-	ModInfo** mods = dhand->modList.loadedMods;
-	UInt8 modCount = dhand->modList.loadedModCount;
+	UInt8 modCount = dhand->modList.GetNormalModCount();
 
 	// save the mod list
 	intfc->OpenRecord('MODS', 0);
 	intfc->WriteRecordData(&modCount, sizeof(modCount));
 	for (UInt32 i = 0; i < modCount; i++)
 	{
-		UInt16 nameLen = strlen(mods[i]->name);
+		ModInfo* mod = dhand->modList.GetMod(i);
+		UInt16 nameLen = strlen(mod->name);
 		intfc->WriteRecordData(&nameLen, sizeof(nameLen));
-		intfc->WriteRecordData(mods[i]->name, nameLen);
+		intfc->WriteRecordData(mod->name, nameLen);
 	}
 
 #ifdef DEBUG
@@ -89,17 +89,16 @@ void Core_NewGameCallback(void * reserved)
 	// reset mod indexes to match current load order
 	if (s_ModFixupTable)
 	{
-		delete s_ModFixupTable;
+		delete[] s_ModFixupTable;
 		s_ModFixupTable = NULL;
 	}
 
 	DataHandler* dhand = DataHandler::Get();
-	UInt8 modCount = dhand->modList.loadedModCount;
-	ModInfo** mods = dhand->modList.loadedMods;
+	UInt8 modCount = dhand->modList.GetNormalModCount();
 
 	s_ModFixupTable = new ModInfo*[modCount];
 	for (UInt32 i = 0; i < modCount; i++)
-		s_ModFixupTable[i] = mods[i];
+		s_ModFixupTable[i] = dhand->modList.GetMod(i);
 
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();

@@ -52,7 +52,7 @@ FakeModInfo::FakeModInfo(NVSESerializationInterface* _intfc)
 		if (s_refModInfo) {
 			memset(s_refModInfo, 0, arraySize);
 			for (SInt8 i=0; i<s_numPreloadMods; i++) {
-				s_refModInfo[i] = dataHand->modList.modInfoList.GetNthItem(s_preloadModRefIDs[i]);
+				s_refModInfo[i] = dataHand->modInfoList.GetNthItem(s_preloadModRefIDs[i]);
 			}
 		}
 	}

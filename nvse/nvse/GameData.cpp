@@ -1,5 +1,7 @@
 #include "GameData.h"
 
+bool DataHandler::bHasExtendedPlugins = false;
+
 #if RUNTIME
 DataHandler* DataHandler::Get()
 {
@@ -16,54 +18,33 @@ DataHandler* DataHandler::Get()
 
 #endif
 
-class LoadedModFinder
-{
-	const char * m_stringToFind;
-
-public:
-	LoadedModFinder(const char * str) : m_stringToFind(str) { }
-
-	bool Accept(ModInfo* modInfo)
-	{
-		return !StrCompare(modInfo->name, m_stringToFind);
-	}
-};
-
 const ModInfo * DataHandler::LookupModByName(const char * modName)
 {
-	return modList.modInfoList.Find(LoadedModFinder(modName));
-}
-
-const ModInfo ** DataHandler::GetActiveModList()
-{
-	static const ModInfo* activeModList[0x100] = { 0 };
-
-	if (!(*activeModList))
-	{
-		UInt16 index = 0;
-		for (index = 0  ; index < DataHandler::Get()->modList.modInfoList.Count() ; index++)
-		{
-			ModInfo* entry = DataHandler::Get()->modList.modInfoList.GetNthItem(index);
-			if (entry->IsLoaded())
-				activeModList[index] = entry;
-		}
-	}
-
-	return activeModList;
+	return ThisStdCall<const ModInfo*>(0x462F40, this, modName);
 }
 
 UInt8 DataHandler::GetModIndex(const char* modName)
 {
-	return modList.modInfoList.GetIndexOf(LoadedModFinder(modName));
+	const ModInfo* mod = LookupModByName(modName);
+	if (mod)
+		return mod->modIndex;
+
+	return 0xFF;
 }
 
 const char* DataHandler::GetNthModName(UInt32 modIndex)
 {
-	const ModInfo** activeModList = GetActiveModList();
-	if (modIndex < GetActiveModCount() && activeModList[modIndex])
-		return activeModList[modIndex]->name;
-	else
+	if (DataHandler::bHasExtendedPlugins && modIndex == 0xFE)
+		return "Small Mod";
+
+	if (modList.GetNormalModCount() <= modIndex || modIndex == 0xFF)
 		return "";
+
+	ModInfo* modInfo = modList.GetMod(modIndex);
+	if (modInfo)
+		return modInfo->name;
+	
+	return "";
 }
 
 void DataHandler::DisableAssignFormIDs(bool shouldAsssign)
@@ -80,7 +61,7 @@ struct IsModLoaded
 
 UInt8 DataHandler::GetActiveModCount() const
 {
-	UInt32 count = modList.modInfoList.CountIf(IsModLoaded());
+	UInt32 count = modList.GetNormalModCount();
 	return count;
 }
 
@@ -91,3 +72,45 @@ ModInfo::ModInfo() {
 ModInfo::~ModInfo() {
 	//
 };
+
+ModInfo* ModList::GetMod(UInt8 modIndex) const {
+	if (DataHandler::bHasExtendedPlugins)
+		return normalFiles.GetAt(modIndex);
+
+	return loadedMods[modIndex];
+}
+
+ModInfo* ModList::GetSmallMod(UInt16 modIndex) const {
+	if (DataHandler::bHasExtendedPlugins)
+		return smallFiles.GetAt(modIndex);
+
+	return nullptr;
+}
+
+ModInfo* ModList::GetOverlayMod(UInt32 modIndex) const {
+	if (DataHandler::bHasExtendedPlugins)
+		return overlayFiles.GetAt(modIndex);
+
+	return nullptr;
+}
+
+UInt32 ModList::GetNormalModCount() const {
+	if (DataHandler::bHasExtendedPlugins)
+		return normalFiles.GetSize();
+
+	return loadedModCount;
+}
+
+UInt32 ModList::GetSmallModCount() const {
+	if (DataHandler::bHasExtendedPlugins)
+		return smallFiles.GetSize();
+
+	return 0;
+}
+
+UInt32 ModList::GetOverlayModCount() const {
+	if (DataHandler::bHasExtendedPlugins)
+		return overlayFiles.GetSize();
+
+	return 0;
+}

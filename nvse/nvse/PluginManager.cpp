@@ -22,6 +22,7 @@
 #include "EventManager.h"
 #include "InventoryReference.h"
 #include "Hooks_Gameplay.h"
+#include "GameData.h"
 #else
 #include "Hooks_Script.h"
 #endif
@@ -673,6 +674,15 @@ void PluginManager::InstallPlugins(void)
 
 	InstallPlugins(pluginPaths);
 	
+#if RUNTIME
+	HMODULE pluginExtensions = GetModuleHandle("PluginExtensions");
+	if (pluginExtensions)
+	{
+		DataHandler::bHasExtendedPlugins = true;
+
+	}
+#endif
+
 	s_currentLoadingPlugin = NULL;
 	s_currentPluginHandle = 0;
 
