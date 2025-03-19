@@ -6,6 +6,7 @@
 #include "common/IFileStream.h"
 #include "PluginManager.h"
 #include "GameAPI.h"
+#include "GameData.h"
 #include <vector>
 //#include "EventManager.h"
 
@@ -639,6 +640,7 @@ UInt32 PeekRecordData(void * buf, UInt32 length)
 
 bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
+	const UInt8 maxIndex = DataHandler::bHasExtendedPlugins ? 0xFE : 0xFF;
 	UInt8 modID = refID >> 24;
 
 	// pass dynamic ids straight through
@@ -649,16 +651,30 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return true;
 	}
 
-	if (modID >= s_numPreloadMods)
-		return false;
-
-	const UInt8 loadedModID = ResolveModIndexForPreload(modID);
-	if (loadedModID == 0xFF) 
+	const ModInfo* mod = nullptr;
+	if (modID != maxIndex) {
+		mod = g_modList.at(modID);
+	}
+	else if (modID == 0xFE) {
+		mod = g_smallMods.at((refID >> 12) & 0xFFF);
+	}
+	if (modID == 0xFF) 
 		return false;	// unloaded
 
-	// fixup ID, success
-	if (outRefID)
-		*outRefID = (loadedModID << 24) | (refID & 0x00FFFFFF);
+	if (!mod)
+		return false;
+
+	if (mod->IsSmall()) {
+		if (outRefID) {
+			*outRefID &= 0xFFF;
+			*outRefID |= 0xFE000000 | (mod->smallIndex << 12);
+		}
+	}
+	else {
+		// fixup ID, success
+		if (outRefID)
+			*outRefID = (mod->modIndex << 24) | (refID & 0x00FFFFFF);
+	}
 
 	return true;
 }

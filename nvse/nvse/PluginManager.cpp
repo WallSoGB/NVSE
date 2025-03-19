@@ -1044,10 +1044,14 @@ void * PluginManager::GetFunc(UInt32 funcID)
 
 void * PluginManager::GetData(UInt32 dataID)
 {
+	static size_t modCount = 0;
 	void * result = NULL;
 	switch(dataID)
 	{
-	case NVSEDataInterface::kNVSEData_NumPreloadMods: result = &s_numPreloadMods; break;
+	case NVSEDataInterface::kNVSEData_NumPreloadMods: 
+		modCount = g_modList.size();
+		result = &modCount;
+		break;
 	}
 	return result;
 }

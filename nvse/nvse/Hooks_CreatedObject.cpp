@@ -41,6 +41,7 @@ FakeModInfo::FakeModInfo(NVSESerializationInterface* _intfc)
 
 	//	func at 0x00471870 for the Runtime gore, from refModNames
 
+#if 0
 	if (s_refModInfo) {
 		FormHeap_Free(refModInfo);
 		s_refModInfo = NULL;
@@ -57,7 +58,7 @@ FakeModInfo::FakeModInfo(NVSESerializationInterface* _intfc)
 		}
 	}
 	refModInfo = s_refModInfo;
-
+#endif
 	// name, filepath, fileoffset, dataoffset
 	SplitSavePath(intfc->GetSavePath());
 	strcpy_s(name, sName.c_str());
