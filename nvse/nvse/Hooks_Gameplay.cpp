@@ -1122,6 +1122,11 @@ void DisplayFrameHook() {
 	CdeclCall(0xB6B730);
 }
 
+void __fastcall TESObjectCELL__OnInit(TESObjectCELL* apThis) {
+	ThisStdCall(0x542D40, apThis);
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellInit, apThis, sizeof(apThis), nullptr);
+}
+
 void Hook_Gameplay_Init(void)
 {
 	// game main loop
@@ -1138,6 +1143,9 @@ void Hook_Gameplay_Init(void)
 
 	WriteRelCall(0x87055E, DisplayFrameHook<false>); // Mainloop
 	WriteRelCall(0x7147C4, DisplayFrameHook<true>); // Loading screen
+
+
+	SafeWrite32(0x102EA3C, (UInt32)&TESObjectCELL__OnInit);
 
 	// this seems stable and helps in debugging, but it makes large files during gameplay
 #if _DEBUG

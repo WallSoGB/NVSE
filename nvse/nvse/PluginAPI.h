@@ -272,6 +272,8 @@ struct NVSEMessagingInterface
 		kMessage_PostQueryPlugins, // called after all plugins have been queried
 
 		kMessage_OnFramePresent, // called when the game is about to present a frame
+
+		kMessage_OnCellInit, // called after cell form is initialized, alongside its references and navmeshes. Useful for modifying references on their load. Lacks any 3D data.
 	};
 
 	UInt32	version;
