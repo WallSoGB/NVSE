@@ -3521,6 +3521,16 @@ public:
 	TESObjectCELL();
 	~TESObjectCELL();
 
+	enum CellLoadState {
+		kCellLoadState_NotLoaded	= 0,
+		kCellLoadState_Unloading	= 1,
+		kCellLoadState_Loading		= 2,
+		kCellLoadState_Loaded		= 3,
+		kCellLoadState_Detaching	= 4,
+		kCellLoadState_Attaching	= 5,
+		kCellLoadState_Attached		= 6,
+	};
+
 	typedef tList<TESObjectREFR> RefList;
 	struct CellCoordinates
 	{

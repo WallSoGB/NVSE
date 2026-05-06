@@ -281,13 +281,13 @@ struct NVSEMessagingInterface
 		kMessage_OnRefUnset3D,	// sent when reference receives a null scene object
 		kMessage_OnRefAttach,	// sent when reference is attached to the cell (end of TESObjectCELL::PerformCellNodeAttach
 
-		kMessage_OnCellAttach, // sent when cell changes its state to "Attached" (end of TESObjectCELL::AttachModels)
-							   // dataLen: 4, data: cell pointer
-		kMessage_OnCellDetach, // sent when cell changes its state to "Detaching" (start of TESObjectCELL::Detach)
-							   // dataLen: 4, data: cell pointer
+		kMessage_OnCellStateChange, // sent when cell changes its load state (TESObjectCELL::SetState)
+									// datalen: 12, data: cell pointer, new state, previous state
 
 		kMessage_OnAllRefsLoaded, // sent when all references of a cell are loaded
 								  // dataLen: 4, data: cell pointer
+
+		kMessage_OnNonPersistentFormLoad, // sent when an unloaded form is loaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
 	};
 
 	UInt32	version;

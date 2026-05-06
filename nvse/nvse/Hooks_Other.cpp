@@ -528,27 +528,53 @@ namespace OtherHooks
 			}
 		};
 
-		CallDetour kAttachCellToWorld;
-		void __fastcall OnCellAttachHook(TESObjectCELL* apThis, void*, uint32_t aeState) {
-			ThisStdCall<void>(kAttachCellToWorld.GetOverwrittenAddr(), apThis, aeState);
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellAttach, apThis, sizeof(uintptr_t), nullptr);
-			if (!apThis->IsTemporary())
-				EventManager::DispatchEvent("oncellattach", nullptr, apThis);
-		}
+		void __fastcall OnCellStateChange(TESObjectCELL* apThis, void*, uint32_t aeState) {
+			const uint32_t uiPrevState = apThis->cellState;
 
-		CallDetour kDetachCellFromWorld;
-		void __fastcall OnCellDetachHook(TESObjectCELL* apThis, void*, uint32_t aeState) {
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellDetach, apThis, sizeof(uintptr_t), nullptr);
-			if (!apThis->IsTemporary())
-				EventManager::DispatchEvent("oncelldetach", nullptr, apThis);
-			ThisStdCall<void>(kDetachCellFromWorld.GetOverwrittenAddr(), apThis, aeState);
+			apThis->cellState = aeState;
+			
+			// NVSE plugin event
+			{
+				struct CellData {
+					TESObjectCELL*	pCell;
+					uint32_t		uiNewState;
+					uint32_t		uiPreviousState;
+				};
+				CellData kData{ apThis, aeState, uiPrevState };
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellStateChange, &kData, sizeof(kData), nullptr);
+			}
+
+			if (apThis->IsTemporary())
+				return;
+
+			// Script events
+			switch (aeState) {
+				case TESObjectCELL::kCellLoadState_NotLoaded:
+					break;
+				case TESObjectCELL::kCellLoadState_Unloading:
+					break;
+				case TESObjectCELL::kCellLoadState_Loading:
+					break;
+				case TESObjectCELL::kCellLoadState_Loaded:
+					break;
+				case TESObjectCELL::kCellLoadState_Detaching:
+					EventManager::DispatchEvent("oncelldetach", nullptr, apThis);
+					break;
+				case TESObjectCELL::kCellLoadState_Attaching:
+					break;
+				case TESObjectCELL::kCellLoadState_Attached:
+					EventManager::DispatchEvent("oncellattach", nullptr, apThis);
+					break;
+				default:
+					break;
+			}
 		}
 
 		CallDetour kOnAllRefsLoaded;
 		bool __fastcall OnAllRefsLoadedHook(TESObjectCELL* apThis) {
 			const bool bResult = ThisStdCall<bool>(kOnAllRefsLoaded.GetOverwrittenAddr(), apThis);
 
-			if (apThis->cellState == 6 && apThis->loadedData && apThis->criticalQueuedRefCount == 0 && apThis->queuedRefCount == 0) {
+			if (apThis->cellState == TESObjectCELL::kCellLoadState_Attached && apThis->loadedData && apThis->criticalQueuedRefCount == 0 && apThis->queuedRefCount == 0) {
 				NVSECellLoadData* pData = NVSECellLoadData::Get(apThis);
 				if (pData && !pData->bAllRefsLoaded) {
 					apThis->CellRefLockEnter();
@@ -564,10 +590,25 @@ namespace OtherHooks
 			return bResult;
 		}
 
+
 		void WriteHooks() {
-			kAttachCellToWorld.WriteRelCall(0x54C01C, uint32_t(OnCellAttachHook));
-			kDetachCellFromWorld.WriteRelCall(0x552C01, uint32_t(OnCellDetachHook));
+			WriteRelJump(0x4512A0, uint32_t(OnCellStateChange));
 			kOnAllRefsLoaded.WriteRelCall(0x5518A5, uint32_t(OnAllRefsLoadedHook));
+		}
+	}
+
+	namespace FormLoading_LowLevel {
+		// No script equivalent, too early
+		CallDetour kOnFormLoad;
+		bool __fastcall OnFormLoad(void* apThis) {
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormLoad, pForm, sizeof(uintptr_t), nullptr);
+			return ThisStdCall<bool>(kOnFormLoad.GetOverwrittenAddr(), apThis);
+		}
+
+		void WriteHooks() {
+			kOnFormLoad.WriteRelCall(0x8495DC, uint32_t(OnFormLoad));
 		}
 	}
 
@@ -595,6 +636,7 @@ namespace OtherHooks
 		DisEnable::WriteHooks();
 		RefLoading::WriteHooks();
 		CellLoading::WriteHooks();
+		FormLoading_LowLevel::WriteHooks();
 	}
 	
 	void ApplyLocaleFixHook()
