@@ -583,7 +583,7 @@ namespace OtherHooks
 					pData->usReferenceCount = apThis->objectList.Count();
 					pData->bAllRefsLoaded = true;
 					apThis->CellRefLockLeave();
-					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnAllRefsLoaded, apThis, sizeof(uintptr_t), nullptr);
+					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellRefsLoaded, apThis, sizeof(uintptr_t), nullptr);
 					if (!apThis->IsTemporary())
 						EventManager::DispatchEvent("oncellrefsloaded", nullptr, apThis);
 				}

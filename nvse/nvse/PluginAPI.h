@@ -284,7 +284,7 @@ struct NVSEMessagingInterface
 		kMessage_OnCellStateChange, // sent when cell changes its load state (TESObjectCELL::SetState)
 									// datalen: 12, data: cell pointer, new state, previous state
 
-		kMessage_OnAllRefsLoaded, // sent when all references of a cell are loaded
+		kMessage_OnCellRefsLoaded, // sent when all references of a cell are loaded
 								  // dataLen: 4, data: cell pointer
 
 		kMessage_OnNonPersistentFormLoad, // sent when an unloaded form is loaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
