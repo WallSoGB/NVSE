@@ -475,9 +475,11 @@ namespace OtherHooks
 
 		CallDetour kRefUnset3D;
 		void __fastcall OnRefUnset3DHook(TESObjectREFR* apThis) {
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
-			if (!apThis->IsTemporary())
-				EventManager::DispatchEvent("onrefset3d", nullptr, apThis);
+			if (apThis->renderState) {
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
+				if (!apThis->IsTemporary())
+					EventManager::DispatchEvent("onrefset3d", nullptr, apThis);
+			}
 			ThisStdCall<void>(kRefUnset3D.GetOverwrittenAddr(), apThis);
 		}
 
