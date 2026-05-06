@@ -275,6 +275,19 @@ struct NVSEMessagingInterface
 
 		kMessage_ReloadConfig, // sent via ReloadPluginConfig command
 							   // dataLen: length of plugin name, data: const char* pluginName
+
+		kMessage_OnRefSet3D,	// sent when reference receives a non-null scene object
+								// dataLen: 8, data: reference pointer and new scene object ptr
+		kMessage_OnRefUnset3D,	// sent when reference receives a null scene object
+		kMessage_OnRefAttach,	// sent when reference is attached to the cell (end of TESObjectCELL::PerformCellNodeAttach
+
+		kMessage_OnCellAttach, // sent when cell changes its state to "Attached" (end of TESObjectCELL::AttachModels)
+							   // dataLen: 4, data: cell pointer
+		kMessage_OnCellDetach, // sent when cell changes its state to "Detaching" (start of TESObjectCELL::Detach)
+							   // dataLen: 4, data: cell pointer
+
+		kMessage_OnAllRefsLoaded, // sent when all references of a cell are loaded
+								  // dataLen: 4, data: cell pointer
 	};
 
 	UInt32	version;

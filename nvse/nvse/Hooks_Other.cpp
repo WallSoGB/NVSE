@@ -456,6 +456,121 @@ namespace OtherHooks
 		}
 	}
 
+	namespace RefLoading {
+#pragma optimize("y", off)
+		CallDetour kRefSet3D;
+		void __fastcall OnRefSet3DHook(TESObjectREFR* apThis) {
+			ThisStdCall<void>(kRefSet3D.GetOverwrittenAddr(), apThis);
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			NiAVObject* pNew3D = *reinterpret_cast<NiAVObject**>(pEBP + 0x8);
+			struct Set3DData {
+				TESObjectREFR*	pRef;
+				NiAVObject*		pNewModel;
+			};
+			Set3DData kData{ apThis, pNew3D };
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefSet3D, &kData, sizeof(kData), nullptr);
+			if (!apThis->IsTemporary())
+				EventManager::DispatchEvent("onrefset3d", nullptr, apThis);
+		}
+
+		CallDetour kRefUnset3D;
+		void __fastcall OnRefUnset3DHook(TESObjectREFR* apThis) {
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
+			if (!apThis->IsTemporary())
+				EventManager::DispatchEvent("onrefset3d", nullptr, apThis);
+			ThisStdCall<void>(kRefUnset3D.GetOverwrittenAddr(), apThis);
+		}
+
+		CallDetour kRefAttachToCell;
+		void __fastcall OnRefAttachHook(TESObjectCELL* apThis) {
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			TESObjectREFR* pRef = *reinterpret_cast<TESObjectREFR**>(pEBP + 0x8);
+			//NiNode* pTargetNode = *reinterpret_cast<NiNode**>(pEBP + 0xC);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefAttach, pRef, sizeof(uintptr_t), nullptr);
+			if (!pRef->IsTemporary())
+				EventManager::DispatchEvent("onrefattach", nullptr, pRef);
+			ThisStdCall<void>(kRefAttachToCell.GetOverwrittenAddr(), apThis);
+		}
+#pragma optimize("", on)
+
+		void WriteHooks() {
+			kRefSet3D.WriteRelCall(0x571090, uint32_t(OnRefSet3DHook));
+			kRefUnset3D.WriteRelCall(0x5710AC, uint32_t(OnRefUnset3DHook));
+			kRefAttachToCell.WriteRelCall(0x549787, uint32_t(OnRefAttachHook));
+		}
+	}
+
+	namespace CellLoading {
+		class NVSECellLoadData : public FormExtraData {
+		public:
+			NVSECellLoadData() : FormExtraData(GetName()) {}
+			virtual ~NVSECellLoadData() override = default;
+
+			bool	bAllRefsLoaded = false;
+			UInt16	usReferenceCount = 0;
+
+			static const NiFixedString& GetName() {
+				static NiFixedString name = "NVSECellLoadedData";
+				return name;
+			}
+
+			static NVSECellLoadData* Create() {
+				auto* item = New<NVSECellLoadData>();
+				new(item) NVSECellLoadData();
+				return item;
+			}
+			static NVSECellLoadData* Get(TESObjectCELL* apCell) {
+				if (auto* existing = FormExtraData::Get(apCell, GetName()))
+					return static_cast<NVSECellLoadData*>(existing);
+				auto* data = Create();
+				FormExtraData::Add(apCell, data);
+				return data;
+			}
+		};
+
+		CallDetour kAttachCellToWorld;
+		void __fastcall OnCellAttachHook(TESObjectCELL* apThis, void*, uint32_t aeState) {
+			ThisStdCall<void>(kAttachCellToWorld.GetOverwrittenAddr(), apThis, aeState);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellAttach, apThis, sizeof(uintptr_t), nullptr);
+			if (!apThis->IsTemporary())
+				EventManager::DispatchEvent("oncellattach", nullptr, apThis);
+		}
+
+		CallDetour kDetachCellFromWorld;
+		void __fastcall OnCellDetachHook(TESObjectCELL* apThis, void*, uint32_t aeState) {
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellDetach, apThis, sizeof(uintptr_t), nullptr);
+			if (!apThis->IsTemporary())
+				EventManager::DispatchEvent("oncelldetach", nullptr, apThis);
+			ThisStdCall<void>(kDetachCellFromWorld.GetOverwrittenAddr(), apThis, aeState);
+		}
+
+		CallDetour kOnAllRefsLoaded;
+		bool __fastcall OnAllRefsLoadedHook(TESObjectCELL* apThis) {
+			const bool bResult = ThisStdCall<bool>(kOnAllRefsLoaded.GetOverwrittenAddr(), apThis);
+
+			if (apThis->cellState == 6 && apThis->loadedData && apThis->criticalQueuedRefCount == 0 && apThis->queuedRefCount == 0) {
+				NVSECellLoadData* pData = NVSECellLoadData::Get(apThis);
+				if (pData && !pData->bAllRefsLoaded) {
+					apThis->CellRefLockEnter();
+					pData->usReferenceCount = apThis->objectList.Count();
+					pData->bAllRefsLoaded = true;
+					apThis->CellRefLockLeave();
+					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnAllRefsLoaded, apThis, sizeof(uintptr_t), nullptr);
+					if (!apThis->IsTemporary())
+						EventManager::DispatchEvent("oncellrefsloaded", nullptr, apThis);
+				}
+			}
+
+			return bResult;
+		}
+
+		void WriteHooks() {
+			kAttachCellToWorld.WriteRelCall(0x54C01C, uint32_t(OnCellAttachHook));
+			kDetachCellFromWorld.WriteRelCall(0x552C01, uint32_t(OnCellDetachHook));
+			kOnAllRefsLoaded.WriteRelCall(0x5518A5, uint32_t(OnAllRefsLoadedHook));
+		}
+	}
+
 	void Hooks_Other_Init()
 	{
 		WriteRelJump(0x9FF5FB, UInt32(TilesDestroyedHook));
@@ -478,6 +593,8 @@ namespace OtherHooks
 		Terminal::WriteHooks();
 		Repair::WriteHooks();
 		DisEnable::WriteHooks();
+		RefLoading::WriteHooks();
+		CellLoading::WriteHooks();
 	}
 	
 	void ApplyLocaleFixHook()
