@@ -478,7 +478,7 @@ namespace OtherHooks
 			if (apThis->renderState) {
 				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
 				if (!apThis->IsTemporary())
-					EventManager::DispatchEvent("onrefset3d", nullptr, apThis);
+					EventManager::DispatchEvent("onrefunset3d", nullptr, apThis);
 			}
 			ThisStdCall<void>(kRefUnset3D.GetOverwrittenAddr(), apThis);
 		}
