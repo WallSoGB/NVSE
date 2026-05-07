@@ -2304,7 +2304,7 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD(QMultQuatVector3Ex);
 	ADD_CMD(QInterpolateEx);
 	ADD_CMD(QToEulerEx);
-
+	ADD_CMD(GetUIFloatInherited);
 }
 
 namespace PluginAPI

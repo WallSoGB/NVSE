@@ -133,7 +133,7 @@ typedef std::pair<Tile *, std::vector<SortValue> > SortItem;
 //
 // A key path looks like
 //   "[-][#][@]path"
-// where 
+// where
 //   "-" reverses the normal sort order for this key
 //   "#" sorts this string field numerically
 //   "@" sorts this item name disregarding quanties and mod indicators
@@ -173,7 +173,7 @@ public:
 					flags |= kNormalizeItemNames;
 					keyPath.erase(0, 1);
 				}
-				DEBUG_PRINT("Parsed key #%d path %s flags %d", 
+				DEBUG_PRINT("Parsed key #%d path %s flags %d",
 					keys.size(), keyPath.c_str(), flags);
 				keys.push_back(std::make_pair(keyPath, flags));
 			}
@@ -203,7 +203,7 @@ public:
 			{
 				return false;
 			}
-			
+
 			if (lhs_val.asFloat)
 			{
 				cmp = lhs_val.num - rhs_val.num;
@@ -274,7 +274,7 @@ static void NormalizeItemName(std::string & str)
 	{
 		str.erase(str.end() - 1);
 	}
-}	
+}
 
 bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 {
@@ -317,7 +317,7 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 		// Fetch tile values
 		bool skip = false;
 		std::vector<SortValue> values;
-		for (std::vector<SortKey>::iterator it=sortSpec.keys.begin(); 
+		for (std::vector<SortKey>::iterator it=sortSpec.keys.begin();
 			 it != sortSpec.keys.end(); ++it)
 		{
 			Tile::Value* val = tile->GetComponentValue(it->first.c_str());
@@ -375,7 +375,7 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 		Tile * tile = sortItem->first;
 		Tile::Value* incrementVal = tile->GetComponentValue(sortSpec.incrementPath.c_str());
 		if (!incrementVal) {
-			DEBUG_PRINT("Failed to find increment trait %s for tile %d", 
+			DEBUG_PRINT("Failed to find increment trait %s for tile %d",
 				sortSpec.incrementPath.c_str(), index)
 			continue;
 		}
@@ -383,8 +383,8 @@ bool Cmd_SortUIListBox_Execute(COMMAND_ARGS)
 
 		Tile::Value* destinationVal = tile->GetComponentValue(sortSpec.destinationPath.c_str());
 		if (!destinationVal) {
-			DEBUG_PRINT("Failed to find destination trait %s for tile %d", 
-				sortSpec.destinationPath.c_str(), index)
+			DEBUG_PRINT("Failed to find destination trait %s for tile %d",
+			sortSpec.destinationPath.c_str(), index)
 			continue;
 		}
 
@@ -443,6 +443,100 @@ bool Cmd_GetUIFloatAlt_Execute(COMMAND_ARGS)
 	}
 	return true;
 }
+
+bool Cmd_GetUIFloatInherited_Execute(COMMAND_ARGS)
+{
+	*result = fErrorReturnValue;
+	char component[0x200];
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &component))
+	{
+		const char* slashPos = nullptr;
+		TileMenu* tileMenu = InterfaceManager::GetMenuByPath(component, &slashPos);
+
+		if (tileMenu && slashPos)
+		{
+			Tile* currentTile = tileMenu;
+			char* subPath = const_cast<char*>(slashPos + 1);
+			float cumulativeValue = 0;
+
+			// Get trait name
+			char* traitName = subPath;
+			char* checkLast = subPath;
+			while (char* next = SlashPos(checkLast)) {
+				traitName = next + 1;
+				checkLast = next + 1;
+			}
+
+			// Check for inherited trait type
+			bool isPos = (_stricmp(traitName, "x") == 0 ||
+				_stricmp(traitName, "y") == 0 ||
+				_stricmp(traitName, "depth") == 0);
+			bool isColor = (_stricmp(traitName, "systemcolor") == 0);
+
+			// Standard trait handling
+			if (!isPos && !isColor)
+			{
+				Tile::Value* val = tileMenu->GetComponentValueAlt(slashPos + 1);
+				if (val) *result = val->num;
+				if (IsConsoleMode())
+					Console_Print("GetUIFloatInherited >> %.4f", *result);
+				return true;
+			}
+
+			// Traverse tiles and apply inherited trait logic
+			char* nextSep = nullptr;
+			while (nextSep = SlashPos(subPath))
+			{
+				char originalSep = *nextSep;
+				*nextSep = 0;
+
+				// Add trait value if locus
+				if (isPos)
+				{
+					Tile::Value* locus = currentTile->GetValue(Tile::eTileValue::kTileValue_locus);
+					if (locus && locus->num != 0)
+					{
+						Tile::Value* localTrait = currentTile->GetValueName(traitName);
+						if (localTrait) cumulativeValue += localTrait->num;
+					}
+				}
+
+				// Get inherited systemcolor
+				else if (isColor)
+				{
+					Tile::Value* colorVal = currentTile->GetValueName(traitName);
+					if (colorVal) cumulativeValue = colorVal->num;
+				}
+
+				Tile* nextTile = currentTile->GetChildAlt(subPath);
+				*nextSep = originalSep;
+
+				// Path invalid
+				if (!nextTile) return true;
+
+				currentTile = nextTile;
+				subPath = nextSep + 1;
+			}
+
+			// Final 
+			if (*subPath)
+			{
+				Tile::Value* finalVal = currentTile->GetValueName(subPath);
+				if (finalVal)
+				{
+					if (isPos) cumulativeValue += finalVal->num;
+					else cumulativeValue = finalVal->num;
+				}
+				*result = cumulativeValue;
+			}
+
+			if (IsConsoleMode())
+				Console_Print("GetUIFloatInherited >> %.4f", *result);
+		}
+	}
+	return true;
+}
+
 
 bool Cmd_SetUIFloatAlt_Execute(COMMAND_ARGS)
 {
