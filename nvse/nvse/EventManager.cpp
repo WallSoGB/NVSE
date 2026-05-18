@@ -751,34 +751,6 @@ std::unique_ptr<ScriptToken> EventCallback::Invoke(EventInfo &eventInfo, const C
 		}, this->toCall);
 }
 
-bool IsValidReference(void* refr)
-{
-	// ### HACK HACK HACK
-	// MarkEventList() may have been called for a BaseExtraList not associated with a TESObjectREFR
-	bool bIsRefr = false;
-	__try
-	{
-		switch (*((UInt32*)refr)) {
-		case kVtbl_PlayerCharacter:
-		case kVtbl_Character:
-		case kVtbl_Creature:
-		case kVtbl_ArrowProjectile:
-		case kVtbl_MagicBallProjectile:
-		case kVtbl_MagicBoltProjectile:
-		case kVtbl_MagicFogProjectile:
-		case kVtbl_MagicSprayProjectile:
-		case kVtbl_TESObjectREFR:
-			bIsRefr = true;
-		}
-	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
-		bIsRefr = false;
-	}
-
-	return bIsRefr;
-}
-
 // stack of event names pushed when handler invoked, popped when handler returns
 // used by GetCurrentEventName
 Stack<const char*> s_eventStack;
@@ -822,7 +794,7 @@ enum class RefState {NotSet, Invalid, Valid};
 
 
 // Deprecated
-void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ClassicArgTypeStack const &argTypes,
+[[deprecated]] void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, bool isReference, ClassicArgTypeStack const &argTypes,
 	ExpressionEvaluator* eval = nullptr, void (*cleanupCallback)() = nullptr)
 {
 	// For filtering via new filters
@@ -836,7 +808,15 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ClassicArgTypeSta
 			args->push_back(arg1);
 	}
 
-	auto isArg0Valid = RefState::NotSet;
+	RefState isArg0Valid = RefState::Invalid;
+	TESForm* baseForm = nullptr;
+	if (isReference && arg0 && reinterpret_cast<TESForm*>(arg0)->GetIsReference()) {
+		isArg0Valid = RefState::Valid;
+		baseForm = GetPermanentBaseForm(static_cast<TESObjectREFR*>(arg0));
+	}
+
+	const DWORD currentThread = GetCurrentThreadId();
+
 	for (auto& iter : eventInfo.callbacks)
 	{
 		EventCallback& callback = iter.second;
@@ -847,9 +827,7 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ClassicArgTypeSta
 		// Check filters
 		if (callback.source && arg0 != callback.source)
 		{
-			if (isArg0Valid == RefState::NotSet)
-				isArg0Valid = IsValidReference(arg0) ? RefState::Valid : RefState::Invalid;
-			if (isArg0Valid == RefState::Invalid || GetPermanentBaseForm(static_cast<TESObjectREFR*>(arg0)) != callback.source)
+			if (isArg0Valid == RefState::Invalid || baseForm != callback.source)
 				continue;
 		}
 
@@ -859,7 +837,7 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ClassicArgTypeSta
 		if (!callback.DoNewFiltersMatch<false>(nullptr, args, argTypes, eventInfo, eval))
 			continue;
 
-		if (GetCurrentThreadId() != g_mainThreadID)
+		if (currentThread != g_mainThreadID)
 		{
 			// avoid potential issues with invoking handlers outside of main thread by deferring event handling
 			s_deferredDeprecatedCallbacks.Push(callback, arg0, arg1, eventInfo, argTypes, cleanupCallback);
@@ -873,26 +851,26 @@ void HandleEvent(EventInfo& eventInfo, void* arg0, void* arg1, ClassicArgTypeSta
 	}
 }
 
-void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, void (*cleanupCallback)())
+void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, bool isReference, void (*cleanupCallback)())
 {
-	HandleEvent(eventInfo, arg0, arg1, eventInfo.GetClassicArgTypesAsStackVector(), nullptr, cleanupCallback);
+	HandleEvent(eventInfo, arg0, arg1, isReference, eventInfo.GetClassicArgTypesAsStackVector(), nullptr, cleanupCallback);
 }
 
-void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval)
+void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, bool isReference, ExpressionEvaluator *eval)
 {
 	ClassicArgTypeStack argTypes;
 	argTypes->push_back(EventArgType::eParamType_Array);
-	HandleEvent(eventInfo, arg0, arg1, argTypes, eval);
+	HandleEvent(eventInfo, arg0, arg1, isReference, argTypes, eval);
 }
 
 // Deprecated in favor of EventManager::DispatchEvent
-void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1, void (*cleanupCallback)())
+void __stdcall HandleEvent(eEventID id, void* arg0, void* arg1, bool isReference, void (*cleanupCallback)())
 {
 	ScopedLock lock(s_criticalSection);
 	EventInfo* eventInfo = s_internalEventInfos[id]; //assume ID is valid
 	if (eventInfo->callbacks.empty()) 
 		return;
-	HandleInternalEvent(*eventInfo, arg0, arg1, cleanupCallback);
+	HandleInternalEvent(*eventInfo, arg0, arg1, isReference, cleanupCallback);
 }
 
 ////////////////
@@ -1233,7 +1211,7 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 		return;
 	}
 
-	if (!IsValidReference(source)) {
+	if (!source->GetIsReference()) {
 		return;
 	}
 
@@ -1262,7 +1240,7 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 				s_lastOnHitWithActor = source;
 
 				s_lastOnHitWithWeapon = object;
-				HandleEvent(eventID, source, object);
+				HandleEvent(eventID, source, object, true);
 			}
 		}
 		else if (eventID == kEventID_OnHit)
@@ -1271,11 +1249,11 @@ void __stdcall HandleGameEvent(UInt32 eventMask, TESObjectREFR* source, TESForm*
 			{
 				s_lastOnHitVictim = source;
 				s_lastOnHitAttacker = object;
-				HandleEvent(eventID, source, object);
+				HandleEvent(eventID, source, object, true);
 			}
 		}
 		else
-			HandleEvent(eventID, source, object);
+			HandleEvent(eventID, source, object, true);
 	}
 }
 
@@ -1283,7 +1261,7 @@ void HandleNVSEMessage(UInt32 msgID, void* data)
 {
 	const eEventID eventID = EventIDForMessage(msgID);
 	if (eventID != kEventID_INVALID)
-		HandleEvent(eventID, data, nullptr);
+		HandleEvent(eventID, data, nullptr, false);
 }
 
 void ClearFlushOnLoadEventHandlers()
@@ -1909,7 +1887,7 @@ bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 args
 	arr->SetElementString("eventSender", senderName);
 
 	// dispatch
-	HandleUserDefinedEvent(eventInfo, (void*)argsArrayId, nullptr, eval);
+	HandleUserDefinedEvent(eventInfo, (void*)argsArrayId, nullptr, false, eval);
 	return true;
 }
 

@@ -1036,9 +1036,9 @@ static const UInt32 kCreateDroppedReferenceRetnAddr = 0x00575162;
 void __stdcall HandleDroppedItem(TESObjectREFR *dropperRef, TESForm *itemBase, TESObjectREFR *droppedRef)
 {
 	if (droppedRef)
-		EventManager::HandleEvent(EventManager::kEventID_OnDrop, dropperRef, droppedRef);
+		EventManager::HandleEvent(EventManager::kEventID_OnDrop, dropperRef, droppedRef, true);
 	if (itemBase)
-		EventManager::HandleEvent(EventManager::kEventID_OnDropItem, dropperRef, itemBase);
+		EventManager::HandleEvent(EventManager::kEventID_OnDropItem, dropperRef, itemBase, true);
 }
 
 __declspec(naked) void DroppedItemHook(void)

@@ -386,14 +386,14 @@ namespace EventManager
 	void HandleNVSEMessage(UInt32 msgID, void *data);
 
 	// Deprecated in favor of EventManager::DispatchEvent options
-	void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, void (*cleanupCallback)() = nullptr);
+	[[deprecated]] void HandleInternalEvent(EventInfo& eventInfo, void* arg0, void* arg1, bool isReference, void (*cleanupCallback)() = nullptr);
 
 	// Used for the (deprecrated) DispatchEvent_Execute
-	void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, ExpressionEvaluator *eval);
+	[[deprecated]] void HandleUserDefinedEvent(EventInfo& eventInfo, void* arg0, void* arg1, bool isReference, ExpressionEvaluator *eval);
 
 	// handle an eventID directly
 	// Deprecated in favor of EventManager::DispatchEvent options
-	void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1, void (*cleanupCallback)() = nullptr);
+	[[deprecated]] void __stdcall HandleEvent(eEventID id, void *arg0, void *arg1, bool isReference, void (*cleanupCallback)() = nullptr);
 
 	void ClearFlushOnLoadEventHandlers();
 
