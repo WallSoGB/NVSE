@@ -276,7 +276,7 @@ namespace OnSell
 				g_sellerRef = seller;
 
 				// Handle the event directly, since we must have the item as first arg, but HandleGameEvent wants that to be a reference.
-				HandleEvent(kEventID_OnSell, item, seller, PostDispatchCleanup);
+				HandleEvent(kEventID_OnSell, item, seller, false, PostDispatchCleanup);
 			}
 		}
 		return contChangesEntry->countDelta;
