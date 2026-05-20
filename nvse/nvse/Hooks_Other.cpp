@@ -476,7 +476,7 @@ namespace OtherHooks
 		CallDetour kRefUnset3D;
 		void __fastcall OnRefUnset3DHook(TESObjectREFR* apThis) {
 			if (apThis->renderState) {
-				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(apThis), nullptr);
 				if (!apThis->IsTemporary())
 					EventManager::DispatchEvent("onrefunset3d", nullptr, apThis);
 			}
@@ -488,7 +488,7 @@ namespace OtherHooks
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			TESObjectREFR* pRef = *reinterpret_cast<TESObjectREFR**>(pEBP + 0x8);
 			//NiNode* pTargetNode = *reinterpret_cast<NiNode**>(pEBP + 0xC);
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefAttach, pRef, sizeof(uintptr_t), nullptr);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefAttach, pRef, sizeof(pRef), nullptr);
 			if (!pRef->IsTemporary())
 				EventManager::DispatchEvent("onrefattach", nullptr, pRef);
 			ThisStdCall<void>(kRefAttachToCell.GetOverwrittenAddr(), apThis);
@@ -583,7 +583,7 @@ namespace OtherHooks
 					pData->usReferenceCount = apThis->objectList.Count();
 					pData->bAllRefsLoaded = true;
 					apThis->CellRefLockLeave();
-					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellRefsLoaded, apThis, sizeof(uintptr_t), nullptr);
+					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellRefsLoaded, apThis, sizeof(apThis), nullptr);
 					if (!apThis->IsTemporary())
 						EventManager::DispatchEvent("oncellrefsloaded", nullptr, apThis);
 				}
@@ -606,7 +606,7 @@ namespace OtherHooks
 		bool __fastcall OnFormLoad(void* apThis) {
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormLoad, pForm, sizeof(uintptr_t), nullptr);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormLoad, pForm, sizeof(pForm), nullptr);
 			return ThisStdCall<bool>(kOnFormLoad.GetOverwrittenAddr(), apThis);
 		}
 
@@ -614,7 +614,7 @@ namespace OtherHooks
 		void __fastcall OnFormUnload(void* apThis, void*, MEM_CONTEXT aeContext, bool abOverridable, const char* apFile, uint32_t auiLine) {
 			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
 			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
-			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormUnload, pForm, sizeof(uintptr_t), nullptr);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormUnload, pForm, sizeof(pForm), nullptr);
 			ThisStdCall<void>(kOnFormLoad.GetOverwrittenAddr(), apThis, aeContext, abOverridable, apFile, auiLine);
 		}
 
