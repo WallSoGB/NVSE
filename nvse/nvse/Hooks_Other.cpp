@@ -609,8 +609,17 @@ namespace OtherHooks
 			return ThisStdCall<bool>(kOnFormLoad.GetOverwrittenAddr(), apThis);
 		}
 
+		CallDetour kOnFormUnload;
+		void __fastcall OnFormUnload(void* apThis, void*, MEM_CONTEXT aeContext, bool abOverridable, const char* apFile, uint32_t auiLine) {
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormUnload, pForm, sizeof(uintptr_t), nullptr);
+			ThisStdCall<void>(kOnFormLoad.GetOverwrittenAddr(), apThis, aeContext, abOverridable, apFile, auiLine);
+		}
+
 		void WriteHooks() {
 			kOnFormLoad.WriteRelCall(0x8495DC, uint32_t(OnFormLoad));
+			kOnFormUnload.WriteRelCall(0x849769, uint32_t(OnFormUnload));
 		}
 	}
 
