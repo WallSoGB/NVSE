@@ -493,13 +493,13 @@ namespace OtherHooks
 				EventManager::DispatchEvent("onrefattach", nullptr, pRef);
 			ThisStdCall<void>(kRefAttachToCell.GetOverwrittenAddr(), apThis);
 		}
-#pragma optimize("", on)
 
 		void WriteHooks() {
 			kRefSet3D.WriteRelCall(0x571090, uint32_t(OnRefSet3DHook));
 			kRefUnset3D.WriteRelCall(0x5710AC, uint32_t(OnRefUnset3DHook));
 			kRefAttachToCell.WriteRelCall(0x549787, uint32_t(OnRefAttachHook));
 		}
+#pragma optimize("", on)
 	}
 
 	namespace CellLoading {
@@ -600,6 +600,7 @@ namespace OtherHooks
 	}
 
 	namespace FormLoading_LowLevel {
+#pragma optimize("y", off)
 		// No script equivalent, too early
 		CallDetour kOnFormLoad;
 		bool __fastcall OnFormLoad(void* apThis) {
@@ -621,6 +622,7 @@ namespace OtherHooks
 			kOnFormLoad.WriteRelCall(0x8495DC, uint32_t(OnFormLoad));
 			kOnFormUnload.WriteRelCall(0x849769, uint32_t(OnFormUnload));
 		}
+#pragma optimize("y", on)
 	}
 
 	void Hooks_Other_Init()
