@@ -926,7 +926,7 @@ void PluginManager::UnregisterListener(PluginHandle listener) {
 	s_pluginListeners.shrink_to_fit();
 }
 
-bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver)
+bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver) noexcept
 {
 #ifdef RUNTIME
 	//_DMESSAGE("dispatch message to event handlers");
@@ -934,21 +934,21 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 		EventManager::HandleNVSEMessage(messageType, data);
 #endif
 	//_DMESSAGE("dispatch message to plugin listeners");
-	UInt32 numRespondents = 0;
+	bool sentMessages = false;
 	PluginHandle target = kPluginHandle_Invalid;
 
-	if (!s_pluginListeners.size())	// no listeners yet registered
+	if (!s_pluginListeners.size()) [[unlikely]]	// no listeners yet registered
 	{
 	    _DMESSAGE("no listeners registered");
 		return false;
 	}
-	else if (sender >= s_pluginListeners.size())
+	else if (sender >= s_pluginListeners.size()) [[unlikely]]
 	{
 	    _DMESSAGE("sender is not in the list");
 		return false;
 	}
 
-	if (receiver)
+	if (receiver) [[unlikely]]
 	{
 		target = g_pluginManager.LookupHandleFromName(receiver);
 		if (target == kPluginHandle_Invalid)
@@ -956,18 +956,18 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 	}
 
 	const char* senderName = g_pluginManager.GetPluginNameFromHandle(sender);
-	if (!senderName)
+	if (!senderName) [[unlikely]]
 		return false;
 
 	for (auto iter = s_pluginListeners[sender].begin(); iter != s_pluginListeners[sender].end(); ++iter)
 	{
-		NVSEMessagingInterface::Message msg{};
+		NVSEMessagingInterface::Message msg;
 		msg.data = data;
 		msg.type = messageType;
 		msg.sender = senderName;
 		msg.dataLen = dataLen;
 
-		if (target != kPluginHandle_Invalid)	// sending message to specific plugin
+		if (target != kPluginHandle_Invalid) [[unlikely]]	// sending message to specific plugin
 		{
 			if (iter->listener == target)
 			{
@@ -975,15 +975,15 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 				return true;
 			}
 		}
-		else
+		else [[likely]]
 		{
 		    //_DMESSAGE("sending %u to %u", messageType, iter->listener);
 			iter->handleMessage(&msg);
-			numRespondents++;
+			sentMessages = true;;
 		}
 	}
 	//_DMESSAGE("dispatched message.");
-	return numRespondents ? true : false;
+	return sentMessages;
 }
 
 PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
