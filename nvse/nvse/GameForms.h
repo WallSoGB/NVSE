@@ -135,7 +135,7 @@ enum FormType
 #define IS_ID(form, type) (form->typeID == kFormType_##type)
 #define NOT_ID(form, type) (form->typeID != kFormType_##type)
 
-struct ModInfo;		// in GameData.h 
+class ModInfo;		// in GameData.h 
 class TESFullName;
 class EnchantmentItem;
 class TESSound;

@@ -78,8 +78,9 @@ struct ChunkHeader
 	UInt16	size : 2;
 };
 
-struct ModInfo		// referred to by game as TESFile
+class ModInfo		// referred to by game as TESFile
 {
+public:
 	ModInfo();
 	~ModInfo();
 
@@ -340,7 +341,9 @@ public:
 	const ModInfo* LookupModByName(const char* modName);
 	UInt8 GetModIndex(const char* modName);
 	UInt8 GetActiveModCount() const;
-	const char* GetNthModName(UInt32 modIndex);
+	const char* GetNthModName(UInt8 modIndex) const;
+	const char* GetNthModName(UInt8 modIndex, UInt16 smallIndex) const;
+	const char* GetModNameForForm(const TESForm* form) const;
 
 	void DisableAssignFormIDs(bool shouldAsssign);
 

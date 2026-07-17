@@ -31,8 +31,7 @@ UInt8 DataHandler::GetModIndex(const char* modName)
 	return 0xFF;
 }
 
-const char* DataHandler::GetNthModName(UInt32 modIndex)
-{
+const char* DataHandler::GetNthModName(UInt8 modIndex) const {
 	if (HasExtendedPlugins() && modIndex == 0xFE)
 		return "Small Mod";
 
@@ -45,6 +44,35 @@ const char* DataHandler::GetNthModName(UInt32 modIndex)
 	
 	return "";
 }
+
+const char* DataHandler::GetNthModName(UInt8 modIndex, UInt16 smallIndex) const {
+	ModInfo* modInfo;
+	if (HasExtendedPlugins() && modIndex == 0xFE) {
+		modInfo = modList.GetSmallMod(smallIndex);
+		if (modInfo)
+			return modInfo->name;
+	}
+	
+	if (modList.GetNormalModCount() <= modIndex || modIndex == 0xFF)
+		return "";
+
+	modInfo = modList.GetMod(modIndex);
+	if (modInfo)
+		return modInfo->name;
+
+	return "";
+}
+
+const char* DataHandler::GetModNameForForm(const TESForm* form) const {
+	UInt8 index = form->GetModIndex();
+	if (HasExtendedPlugins() && index == 0xFE) {
+		UInt16 smallIndex = (form->refID & 0xFFF000) >> 12;
+		return GetNthModName(0xFE, smallIndex);
+	}
+
+	return GetNthModName(index);
+}
+
 
 void DataHandler::DisableAssignFormIDs(bool shouldAsssign)
 {
