@@ -640,7 +640,7 @@ UInt32 PeekRecordData(void * buf, UInt32 length)
 
 bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
-	const UInt8 maxIndex = DataHandler::bHasExtendedPlugins ? 0xFE : 0xFF;
+	const UInt8 maxIndex = DataHandler::ExtendedPlugins() ? 0xFE : 0xFF;
 	UInt8 modID = refID >> 24;
 
 	// pass dynamic ids straight through

@@ -33,7 +33,7 @@ void Core_SaveCallback(void * reserved)
 {
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 	DataHandler* dhand = DataHandler::Get();
-	UInt32 version = dhand->bHasExtendedPlugins;
+	UInt32 version = dhand->HasExtendedPlugins();
 	UInt8 modCount = dhand->modList.GetNormalModCount();
 
 	// save the mod list

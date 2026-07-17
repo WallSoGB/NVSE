@@ -1,6 +1,5 @@
 #include "GameData.h"
 
-bool DataHandler::bHasExtendedPlugins = false;
 
 #if RUNTIME
 DataHandler* DataHandler::Get()
@@ -34,7 +33,7 @@ UInt8 DataHandler::GetModIndex(const char* modName)
 
 const char* DataHandler::GetNthModName(UInt32 modIndex)
 {
-	if (bHasExtendedPlugins && modIndex == 0xFE)
+	if (HasExtendedPlugins() && modIndex == 0xFE)
 		return "Small Mod";
 
 	if (modList.GetNormalModCount() <= modIndex || modIndex == 0xFF)
@@ -76,7 +75,7 @@ ModInfo* ModList::GetMod(UInt8 modIndex) const {
 	if (modIndex >= GetNormalModCount())
 		return nullptr;
 
-	if (DataHandler::bHasExtendedPlugins)
+	if (DataHandler::ExtendedPlugins())
 		return normalFiles.GetAt(modIndex);
 
 	return loadedMods[modIndex];
@@ -86,7 +85,7 @@ ModInfo* ModList::GetSmallMod(UInt16 modIndex) const {
 	if (modIndex >= GetSmallModCount())
 		return nullptr;
 
-	if (DataHandler::bHasExtendedPlugins)
+	if (DataHandler::ExtendedPlugins())
 		return smallFiles.GetAt(modIndex);
 
 	return nullptr;
@@ -96,28 +95,28 @@ ModInfo* ModList::GetOverlayMod(UInt32 modIndex) const {
 	if (modIndex >= GetOverlayModCount())
 		return nullptr;
 
-	if (DataHandler::bHasExtendedPlugins)
+	if (DataHandler::ExtendedPlugins())
 		return overlayFiles.GetAt(modIndex);
 
 	return nullptr;
 }
 
 UInt32 ModList::GetNormalModCount() const {
-	if (DataHandler::bHasExtendedPlugins)
+	if (DataHandler::ExtendedPlugins())
 		return normalFiles.GetSize();
 
 	return loadedModCount;
 }
 
 UInt32 ModList::GetSmallModCount() const {
-	if (DataHandler::bHasExtendedPlugins)
+	if (DataHandler::ExtendedPlugins())
 		return smallFiles.GetSize();
 
 	return 0;
 }
 
 UInt32 ModList::GetOverlayModCount() const {
-	if (DataHandler::bHasExtendedPlugins)
+	if (DataHandler::ExtendedPlugins())
 		return overlayFiles.GetSize();
 
 	return 0;

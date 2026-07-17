@@ -674,15 +674,6 @@ void PluginManager::InstallPlugins(void)
 
 	InstallPlugins(pluginPaths);
 	
-#if RUNTIME
-	HMODULE pluginExtensions = GetModuleHandle("PluginExtensions");
-	if (pluginExtensions)
-	{
-		DataHandler::bHasExtendedPlugins = true;
-
-	}
-#endif
-
 	s_currentLoadingPlugin = NULL;
 	s_currentPluginHandle = 0;
 

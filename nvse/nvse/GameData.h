@@ -245,7 +245,7 @@ public:
 	DataHandler();
 	~DataHandler();
 
-	UInt32							unk00;					// 000
+	UInt32							flags;					// 000
 	BoundObjectListHead				* boundObjectList;		// 004
 	tList<TESPackage>				packageList;			// 008
 	tList<TESWorldSpace>			worldSpaceList;			// 010
@@ -334,7 +334,8 @@ public:
 
 	static DataHandler* Get();
 
-	static bool bHasExtendedPlugins;
+	bool HasExtendedPlugins() const { return flags & 0xC0; };
+	static bool ExtendedPlugins() { return Get()->HasExtendedPlugins(); }
 
 	const ModInfo* LookupModByName(const char* modName);
 	UInt8 GetModIndex(const char* modName);
