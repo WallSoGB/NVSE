@@ -158,7 +158,6 @@ public:
 	ExpressionEvaluator	* m_parent;
 	ThreadLocalData&	localData;
 	std::vector<std::string> errorMessages;
-	std::optional<CachedTokens> consoleTokens;
 
 	ExpressionEvaluator(const ExpressionEvaluator& other) = delete;
 	ExpressionEvaluator& operator=(const ExpressionEvaluator& other) = delete;
@@ -168,7 +167,7 @@ public:
 
 	void PushOnStack();
 	void PopFromStack() const;
-	CachedTokens* GetTokens(std::optional<CachedTokens>* consoleTokensContainer);
+	CachedTokens* GetTokens();
 
 	bool m_inline;
 
@@ -409,7 +408,7 @@ public:
 	~ExpressionParser();
 
 	bool			ParseArgs(ParamInfo* params, UInt32 numParams, bool bUsesNVSEParamTypes = true, bool parseWholeLine = true);
-	static [[nodiscard]] bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam, CommandInfo* cmdInfo);
+	[[nodiscard]] static bool			ValidateArgType(ParamType paramType, Token_Type argType, bool bIsNVSEParam, CommandInfo* cmdInfo);
 	bool GetUserFunctionParams(const std::vector<std::string>& paramNames, std::vector<UserFunctionParam>& outParams,
 	                           Script::VarInfoList* varList, const std::string& fullScriptText, Script* script) const;
 	bool ParseUserFunctionParameters(std::vector<UserFunctionParam>& out, const std::string& funcScriptText,

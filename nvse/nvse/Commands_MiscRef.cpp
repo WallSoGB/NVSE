@@ -256,8 +256,8 @@ struct CellScanInfo
 
 		if (world && cellDepth)		//exterior, cell depth > 0
 		{
-			curX = cell->coords->x - cellDepth;
-			curY = cell->coords->y - cellDepth;
+			curX = cell->cellData->x - cellDepth;
+			curY = cell->cellData->y - cellDepth;
 			UInt32 key = (curX << 16) + ((curY << 16) >> 16);
 			curCell = world->cellMap->Lookup(key);
 		}
@@ -265,8 +265,8 @@ struct CellScanInfo
 		{
 			cellDepth = 0;
 			curCell = cell;
-			curX = cell->coords->x;
-			curY = cell->coords->y;
+			curX = cell->cellData->x;
+			curY = cell->cellData->y;
 		}
 	}
 
@@ -280,9 +280,9 @@ struct CellScanInfo
 
 		do
 		{
-			if (curX - cell->coords->x == cellDepth)
+			if (curX - cell->cellData->x == cellDepth)
 			{
-				if (curY - cell->coords->y == cellDepth)
+				if (curY - cell->cellData->y == cellDepth)
 				{
 					curCell = NULL;
 					return false;
@@ -926,6 +926,7 @@ bool Cmd_GetRefsInCell_Execute(COMMAND_ARGS)
 
 bool Cmd_GetRefCount_Execute(COMMAND_ARGS)
 {
+	ScopedLock lock(s_invRefMapCS);
 	InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
 	if (invRefr)
 		*result = invRefr->m_data.entry->countDelta;
@@ -942,6 +943,8 @@ bool Cmd_SetRefCount_Execute(COMMAND_ARGS)
 	UInt32 newCount;
 	if (ExtractArgs(EXTRACT_ARGS, &newCount) && newCount && (newCount <= 0x7FFF))
 	{
+		ScopedLock lock(s_invRefMapCS);
+
 		InventoryReference *invRefr = s_invRefMap.GetPtr(thisObj->refID);
 		if (invRefr)
 		{
@@ -2006,7 +2009,7 @@ bool Cmd_CreateFormList_Execute(COMMAND_ARGS)
 						UInt32 formId;
 						if (elem->GetAsFormID(&formId))
 						{
-							formList->AddAt(LookupFormByID(formId), eListEnd);
+							formList->AddAtTemp(LookupFormByID(formId), eListEnd);
 						}
 					}
 				}

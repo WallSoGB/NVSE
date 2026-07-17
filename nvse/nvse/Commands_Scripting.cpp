@@ -857,7 +857,8 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 
 		const auto scriptName = scriptObj->GetName();
 
-		const auto &lowered = ToLower(std::string(pluginName));
+		std::string lowered(pluginName);
+		ToLower(lowered);
 		if (pluginWarnings.contains(lowered)) {
 			return true;
 		}
@@ -875,7 +876,7 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 
 		// Handle NVSE version separately as it is 4 packed numbers
 		else if (!_stricmp(pluginName, "nvse")) {
-			if (pluginVersion >= PACKED_NVSE_VERSION) {
+			if (PACKED_NVSE_VERSION >= pluginVersion) {
 				return true;
 			}
 
@@ -900,7 +901,7 @@ bool Cmd_PluginVersion_Execute(COMMAND_ARGS) {
 		// All plugins use single integer version
 		else {
 			const auto info = g_pluginManager.GetInfoFromHandle(pluginHandle);
-			if (pluginVersion >= info->version) {
+			if (info->version >= pluginVersion) {
 				return true;
 			}
 

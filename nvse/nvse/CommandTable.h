@@ -174,10 +174,10 @@ struct ParamInfo
 	DEFINE_CMD_FULL(name, altName, description, refRequired, numParams, paramInfo, Cmd_Default_Parse)	
 
 #define DEFINE_CMD_ALIAS(name, altName, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Default_Parse)	
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? uint16_t{(sizeof(paramInfo) / sizeof(ParamInfo))} : uint16_t{0}, paramInfo, Cmd_Default_Parse)	
 
 #define DEFINE_CMD_ALT_EXP(name, altName, description, refRequired, paramInfo) \
-	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? (sizeof(paramInfo) / sizeof(ParamInfo)) : 0, paramInfo, Cmd_Expression_Parse)	
+	DEFINE_CMD_FULL(name, altName, description, refRequired, (paramInfo) ? uint16_t{(sizeof(paramInfo) / sizeof(ParamInfo))} : uint16_t{0}, paramInfo, Cmd_Expression_Parse)	
 
 // Deprecated, use DEFINE_CMD instead.
 #define DEFINE_COMMAND(name, description, refRequired, numParams, paramInfo) \
@@ -312,7 +312,7 @@ public:
 	CommandInfo *	GetStart(void)	{ return &m_commands[0]; }
 	CommandInfo *	GetEnd(void)	{ return GetStart() + m_commands.size(); }
 
-	CommandInfo *	GetByName(const char * name, std::unordered_map<std::string, UInt32> *pluginVersions = nullptr);
+	CommandInfo *	GetByName(const char * name);
 	CommandInfo *	GetByOpcode(UInt32 opcode);
 	std::tuple<std::string, UInt32> *GetUpdateInfoForOpCode(UInt32 opcode);
 
@@ -325,6 +325,7 @@ public:
 	UInt32	GetCurID(void)			{ return m_curID; }
 
 	void	Dump(void);
+	void	DumpWikiDocs(void);
 	void	DumpAlternateCommandNames(void);
 	void	DumpCommandDocumentation(bool showQuickList, UInt32 startWithID = kNVSEOpcodeStart, 
 		bool showIfConditionOnly = false, bool showIfDeprecated = false);
@@ -377,6 +378,7 @@ namespace PluginAPI
 	UInt32 GetReqVersion(const CommandInfo* cmd);
 	const PluginInfo* GetCmdParentPlugin(const CommandInfo* cmd);
 	const PluginInfo* GetPluginInfoByName(const char *pluginName);
+	const PluginInfo* GetPluginInfoByDLLName(const char *DLLName);
 }
 
 #if NVSE_CORE

@@ -57,6 +57,23 @@ bool Cmd_V3Normalize_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_V3NormalizeEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* xOut, * yOut, * zOut;
+	Vector3 v;
+
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &xOut, &yOut, &zOut, &v.x, &v.y, &v.z))
+	{
+		V3Normalize( v );
+		xOut->data = v.x;
+		yOut->data = v.y;
+		zOut->data = v.z;
+	}
+
+	return true;
+}
+
 /*bool Cmd_V3Dotproduct_Execute( COMMAND_ARGS )
 {
 	Vector3 v1, v2;
@@ -89,6 +106,23 @@ bool Cmd_V3Crossproduct_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_V3CrossproductEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* xOut, * yOut, * zOut;
+	Vector3 v1, v2;
+
+	if (ExtractArgsEx(EXTRACT_ARGS_EX, &xOut, &yOut, &zOut, &v1.x, &v1.y, &v1.z, &v2.x, &v2.y, &v2.z))
+	{
+		Vector3 out = V3Crossproduct( v1, v2 );
+		xOut->data = out.x;
+		yOut->data = out.y;
+		zOut->data = out.z;
+	}
+
+	return true;
+}
+
 ///////////////////////////////////////////
 ///			Quaternion commands
 ///////////////////////////////////////////
@@ -114,6 +148,26 @@ bool Cmd_QFromEuler_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_QFromEulerEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* wOut, * xOut, * yOut, * zOut;
+	Euler e;
+	int actorFlag = 0;
+
+	if(ExtractArgs(EXTRACT_ARGS, &wOut, &xOut, &yOut, &zOut, &e.elevation, &e.bank, &e.heading, &actorFlag))
+	{
+		Quat out = fromEuler( e, actorFlag );
+		wOut->data = out.w;
+		xOut->data = out.x;
+		yOut->data = out.y;
+		zOut->data = out.z;
+	}
+
+	return true;
+}
+
+
 bool Cmd_QFromAxisAngle_Execute( COMMAND_ARGS )
 {
 	char quat_w_name[VBUFSIZ], quat_x_name[VBUFSIZ], quat_y_name[VBUFSIZ], quat_z_name[VBUFSIZ];
@@ -134,6 +188,26 @@ bool Cmd_QFromAxisAngle_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_QFromAxisAngleEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* wOut, * xOut, * yOut, * zOut;
+	Vector3 axis;
+	float angle;
+
+	if(ExtractArgs(EXTRACT_ARGS, &wOut, &xOut, &yOut, &zOut, &axis.x, &axis.y, &axis.z, &angle))
+	{
+		Quat out = fromAxisAngle( axis, angle );
+		wOut->data = out.w;
+		xOut->data = out.x;
+		yOut->data = out.y;
+		zOut->data = out.z;
+	}
+
+	return true;
+}
+
+
 bool Cmd_QNormalize_Execute( COMMAND_ARGS )
 {
 	char quat_w_name[VBUFSIZ], quat_x_name[VBUFSIZ], quat_y_name[VBUFSIZ], quat_z_name[VBUFSIZ];
@@ -150,6 +224,24 @@ bool Cmd_QNormalize_Execute( COMMAND_ARGS )
 	setVarByName( scriptObj, eventList, quat_x_name, q.x );
 	setVarByName( scriptObj, eventList, quat_y_name, q.y );
 	setVarByName( scriptObj, eventList, quat_z_name, q.z );
+	return true;
+}
+
+bool Cmd_QNormalizeEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* wOut, * xOut, * yOut, * zOut;
+	Quat q;
+
+	if(ExtractArgs(EXTRACT_ARGS, &wOut, &xOut, &yOut, &zOut, &q.w, &q.x, &q.y, &q.z))
+	{
+		q.normalize();
+		wOut->data = q.w;
+		xOut->data = q.x;
+		yOut->data = q.y;
+		zOut->data = q.z;
+	}
+
 	return true;
 }
 
@@ -173,6 +265,24 @@ bool Cmd_QMultQuatQuat_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_QMultQuatQuatEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* wOut, * xOut, * yOut, * zOut;
+	Quat q1, q2;
+
+	if(ExtractArgs(EXTRACT_ARGS, &wOut, &xOut, &yOut, &zOut, &q1.w, &q1.x, &q1.y, &q1.z, &q2.w, &q2.x, &q2.y, &q2.z))
+	{
+		Quat out = q1 * q2;
+		wOut->data = out.w;
+		xOut->data = out.x;
+		yOut->data = out.y;
+		zOut->data = out.z;
+	}
+
+	return true;
+}
+
 bool Cmd_QMultQuatVector3_Execute( COMMAND_ARGS )
 {
 	char vector_x_name[VBUFSIZ], vector_y_name[VBUFSIZ], vector_z_name[VBUFSIZ];
@@ -190,6 +300,23 @@ bool Cmd_QMultQuatVector3_Execute( COMMAND_ARGS )
 	setVarByName( scriptObj, eventList, vector_x_name, out.x );
 	setVarByName( scriptObj, eventList, vector_y_name, out.y );
 	setVarByName( scriptObj, eventList, vector_z_name, out.z );
+	return true;
+}
+
+bool Cmd_QMultQuatVector3Ex_Execute( COMMAND_ARGS )
+{
+	ScriptLocal* xOut, * yOut, * zOut;
+	Quat q;
+	Vector3 v;
+
+	if(ExtractArgs(EXTRACT_ARGS, &xOut, &yOut, &zOut, &q.w, &q.x, &q.y, &q.z, &v.x, &v.y, &v.z))
+	{
+		Vector3 out = q * v;
+		xOut->data = out.x;
+		yOut->data = out.y;
+		zOut->data = out.z;
+	}
+
 	return true;
 }
 
@@ -220,6 +347,30 @@ bool Cmd_QInterpolate_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_QInterpolateEx_Execute( COMMAND_ARGS )
+{
+	*result = 0;
+	ScriptLocal* wOut, * xOut, * yOut, * zOut;
+	Quat q1, q2;
+	float t;
+	int slerpFlag = 0;
+
+	if(ExtractArgs(EXTRACT_ARGS, &wOut, &xOut, &yOut, &zOut, &q1.w, &q1.x, &q1.y, &q1.z, &q2.w, &q2.x, &q2.y, &q2.z, &t, &slerpFlag))
+	{
+		Quat out;
+		if ( !slerpFlag )
+			out = nlerp( q1, q2, t );
+		else
+			out = slerp( q1, q2, t );
+		wOut->data = out.w;
+		xOut->data = out.x;
+		yOut->data = out.y;
+		zOut->data = out.z;
+	}
+
+	return true;
+}
+
 bool Cmd_QToEuler_Execute( COMMAND_ARGS )
 {
 	char heading_name[VBUFSIZ], attitude_name[VBUFSIZ], bank_name[VBUFSIZ];
@@ -232,7 +383,7 @@ bool Cmd_QToEuler_Execute( COMMAND_ARGS )
 						&actorFlag ) )
 		return true;
 
-	Euler out = fromQuat( q, actorFlag );
+	Euler out = fromQuat( q, actorFlag, 0 );
 
 	setVarByName( scriptObj, eventList, attitude_name, out.elevation );
 	setVarByName( scriptObj, eventList, bank_name, out.bank );
@@ -240,4 +391,18 @@ bool Cmd_QToEuler_Execute( COMMAND_ARGS )
 	return true;
 }
 
+bool Cmd_QToEulerEx_Execute( COMMAND_ARGS )
+{
+	ScriptLocal* xOut, * yOut, * zOut;
+	Quat q;
+	int actorFlag = 0;
 
+	if(ExtractArgs(EXTRACT_ARGS, &xOut, &yOut, &zOut, &q.w, &q.x, &q.y, &q.z, &actorFlag))
+	{
+		Euler out = fromQuat( q, actorFlag, 1 );
+		xOut->data = out.elevation;
+		yOut->data = out.bank;
+		zOut->data = out.heading;
+	}
+	return true;
+}

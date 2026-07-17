@@ -328,7 +328,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_Cell:
-				if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESObjectCELL) || !(((TESObjectCELL *)spToken.refObj)->cellFlags & 1)))
+				if (!spToken.varIdx && (!spToken.refObj || NOT_ID(spToken.refObj, TESObjectCELL) || ((TESObjectCELL *)spToken.refObj)->cellFlags.IsClear(1)))
 				{
 					errorFmt = (const char *)0xD60BF8;
 					goto compileError;
@@ -824,37 +824,6 @@ compileError:
 #endif
 #endif
 #if RUNTIME
-
-struct TLSData
-{
-	// thread local storage
-
-	UInt32 pad000[(0x260 - 0x000) >> 2]; // 000
-	NiNode *lastNiNode;					 // 260	248 in FOSE
-	TESObjectREFR *lastNiNodeREFR;		 // 264	24C in FOSE
-	UInt8 consoleMode;					 // 268
-	UInt8 pad269[3];					 // 269
-										 // 25C is used as do not head track the player ,
-										 // 2B8 is used to init QueudFile::unk0018,
-										 // 28C might count the recursive calls to Activate, limited to 5.
-};
-
-STATIC_ASSERT(offsetof(TLSData, consoleMode) == 0x268);
-
-static TLSData *GetTLSData()
-{
-	UInt32 TlsIndex = *g_TlsIndexPtr;
-	TLSData *data = NULL;
-
-	__asm {
-		mov		ecx,	[TlsIndex]
-		mov		edx,	fs:[2Ch] // linear address of thread local storage array
-		mov		eax,	[edx+ecx*4]
-		mov		[data], eax
-	}
-
-	return data;
-}
 
 __declspec(naked) bool IsConsoleMode()
 {

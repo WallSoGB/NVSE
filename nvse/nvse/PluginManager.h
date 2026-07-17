@@ -19,6 +19,7 @@ public:
 	PluginInfo *	GetInfoByName(const char * name);
 	PluginInfo *	GetInfoFromHandle(PluginHandle handle);
 	PluginInfo *	GetInfoFromBase(UInt32 baseOpcode);
+	PluginInfo *	GetInfoByDLLName(const char *DLLName);
 	const char *	GetPluginNameFromHandle(PluginHandle handle);
 
 	UInt32			GetNumPlugins(void);
@@ -35,8 +36,9 @@ public:
 	static PluginHandle	GetPluginHandle(void);
 	static const char *	GetFalloutDir();
 
-	static bool Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver);
+	static bool Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver) noexcept;
 	static bool	RegisterListener(PluginHandle listener, const char* sender, NVSEMessagingInterface::EventCallback handler);
+	static void	UnregisterListener(PluginHandle listener);
 
 	static void * GetSingleton(UInt32 singletonID);
 	static void * GetFunc(UInt32 funcID);
@@ -94,6 +96,7 @@ extern PluginManager	g_pluginManager;
 
 extern CommandInfo kCommandInfo_IsPluginInstalled;
 extern CommandInfo kCommandInfo_GetPluginVersion;
+extern CommandInfo kCommandInfo_ReloadPluginConfig;
 
 typedef UInt32 (__stdcall *_GetLNEventMask)(const char *eventName);
 extern _GetLNEventMask GetLNEventMask;

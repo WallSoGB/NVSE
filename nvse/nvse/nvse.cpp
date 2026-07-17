@@ -16,6 +16,8 @@
 #include "Commands_Input.h"
 #include "GameAPI.h"
 #include "EventManager.h"
+#include "FormExtraData.h"
+#include "ScriptDataCache.h"
 
 #if RUNTIME
 IDebugLog	gLog("nvse.log");
@@ -101,6 +103,11 @@ void NVSE_Initialize(void)
 		UInt32 noFileWarning = 0;
 		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoSaveWarnings", &noFileWarning) && noFileWarning)
 			g_noSaveWarnings = true;
+		
+		UInt32 noScriptRunnerCache = 0;
+		if (GetNVSEConfigOption_UInt32("RELEASE", "bNoScriptRunnerCaching", &noScriptRunnerCache) && noScriptRunnerCache)
+			ScriptDataCache::g_enabled = false;
+			
 
 		_MESSAGE("NVSE runtime: initialize (version = %d.%d.%d %08X %08X%08X)",
 			NVSE_VERSION_INTEGER, NVSE_VERSION_INTEGER_MINOR, NVSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
@@ -148,6 +155,12 @@ void NVSE_Initialize(void)
 
 		MersenneTwister::init_genrand(GetTickCount());
 
+		// Set default context in order to allocate memory in game's default heap instead of static heap. (Static heap is non-freeable.)
+		// This applies both to NVSE and its plugins.
+		// Can't use AutoMemContext due to __try/__except.
+		UInt32 existingContext = TLSData::GetMemContext();
+		TLSData::SetMemContext(MC_DEFAULT);
+
 #if RUNTIME
 		// Runs before CommandTable::Init to prevent plugins from being able to register events before ours (breaks assert).
 		EventManager::Init();	
@@ -164,6 +177,7 @@ void NVSE_Initialize(void)
 		Hook_Script_Init();
 		Hook_Animation_Init();
 		OtherHooks::Hooks_Other_Init();
+		FormExtraData::WriteHooks();
 
 		Hook_Dialog_Init();
 		PatchGameCommandParser();
@@ -193,6 +207,9 @@ void NVSE_Initialize(void)
 #endif
 #endif
 		FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+
+		// Restore game's context
+		TLSData::SetMemContext(existingContext);
 
 #ifndef _DEBUG
 	}

@@ -125,3 +125,111 @@ ParamInfo kParams_Quat4Strings9Floats1Int[14] =
 	{"ratio", kParamType_Float, 0},
 	{"flag", kParamType_Integer, 1}
 };
+
+ParamInfo kParams_ThreeScriptVars_ThreeFloats[6] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};
+
+ParamInfo kParams_ThreeScriptVars_SixFloats[9] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};
+
+
+ParamInfo kParams_FourScriptVars_ThreeFloats_OneOptionalInt[8] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "flag", kParamType_Integer, 1 }
+};
+
+ParamInfo kParams_FourScriptVars_FourFloats[8] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};
+
+ParamInfo kParams_FourScriptVars_EightFloats[12] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};
+
+ParamInfo kParams_ThreeScriptVars_SevenFloats[10] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 }
+};
+
+ParamInfo kParams_FourScriptVars_NineFloats_OneOptionalInt[14] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "flag", kParamType_Integer, 1 }
+};
+
+ParamInfo kParams_ThreeScriptVars_FourFloats_OneOptionalInt[8] =
+{
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Script Var", kParamType_ScriptVariable , 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "Float", kParamType_Float, 0 },
+	{ "flag", kParamType_Integer, 1 }
+};

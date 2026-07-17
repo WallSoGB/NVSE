@@ -13,6 +13,15 @@ DEFINE_CMD_ALT(QFromAxisAngle, qfromaa, converts axis-angle rotation to quaterni
 DEFINE_CMD_ALT(QNormalize, qnorm, returns normalized quaternion, 0, 8, kParams_Quat4Strings4Floats);
 DEFINE_CMD_ALT(QMultQuatQuat, qmultq, multiplies two quaternions, 0, 12, kParams_Quat4Strings8Floats);
 DEFINE_CMD_ALT(QMultQuatVector3, qmultv3, multiplies vector3 by quaternion, 0, 10, kParams_VectorQuatVector3Strings7Floats);
-DEFINE_CMD_ALT(QInterpolate, qint, interpolates between two quaternions; default method is normalized linear interpolation. optional flag indicates spherical linear interpolation, 0, 
-			   14, kParams_Quat4Strings9Floats1Int);
+DEFINE_CMD_ALT(QInterpolate, qint, interpolates between two quaternions; default method is normalized linear interpolation. optional flag indicates spherical linear interpolation, 0,  14, kParams_Quat4Strings9Floats1Int);
 DEFINE_CMD_ALT(QToEuler, qtoe, converts quaternion to euler angles. optional flag indicates the output will be used for rotating an actor, 0, 8, kParams_EulerQuat3Strings4Floats1Int);
+
+DEFINE_CMD_ALT(V3NormalizeEx, V3NormEx, Returns normalized vector3, 0, 6, kParams_ThreeScriptVars_ThreeFloats);
+DEFINE_CMD_ALT(V3CrossproductEx, V3CrossEx, Returns crossproduct of two vectors, 0, 9, kParams_ThreeScriptVars_SixFloats);
+DEFINE_CMD_ALT(QFromEulerEx, QFromEEx, Converts euler angles to quaternion, 0, 8, kParams_FourScriptVars_ThreeFloats_OneOptionalInt);
+DEFINE_CMD_ALT(QFromAxisAngleEx, QFromAAEx, Converts axis-angle rotation to quaternion, 0, 8, kParams_FourScriptVars_FourFloats);
+DEFINE_CMD_ALT(QNormalizeEx, QNormEx, Returns normalized quaternion, 0, 8, kParams_FourScriptVars_FourFloats);
+DEFINE_CMD_ALT(QMultQuatQuatEx, QMultQEx, Multiplies two quaternions, 0, 12, kParams_FourScriptVars_EightFloats);
+DEFINE_CMD_ALT(QMultQuatVector3Ex, QMultV3Ex, Multiplies vector3 by quaternion, 0, 10, kParams_ThreeScriptVars_SevenFloats);
+DEFINE_CMD_ALT(QInterpolateEx, QIntEx, Interpolates between two quaternions, 0, 14, kParams_FourScriptVars_NineFloats_OneOptionalInt);
+DEFINE_CMD_ALT(QToEulerEx, QToEEx, Converts quaternion to euler angles, 0, 8, kParams_ThreeScriptVars_FourFloats_OneOptionalInt);

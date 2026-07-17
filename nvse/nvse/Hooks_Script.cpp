@@ -17,13 +17,16 @@
 
 #include "GameAPI.h"
 #include "GameData.h"
-#include "NVSECompiler.h"
-#include "NVSECompilerUtils.h"
-#include "NVSELexer.h"
-#include "NVSEParser.h"
-#include "NVSETreePrinter.h"
-#include "NVSETypeChecker.h"
+#include "Compiler/Utils.h"
+#include "Compiler/Lexer/Lexer.h"
+#include "Compiler/Parser/Parser.h"
+#include "Compiler/Passes/TreePrinter.h"
+#include "Compiler/Passes/TypeChecker.h"
+#include "Compiler/Passes/Compiler.h"
 #include "PluginManager.h"
+#include "ScriptDataCache.h"
+#include "Compiler/Passes/MatchTransformer.h"
+#include "Compiler/Passes/VariableResolution.h"
 
 // a size of ~1KB should be enough for a single line of code
 char s_ExpressionParserAltBuffer[0x500] = {0};
@@ -494,16 +497,36 @@ enum PrecompileResult : uint8_t
 	kPrecompile_SpecialCompile // only occurs if a plugin overtakes the compilation process.
 };
 
+// We want to preserve loop start offsets in case we are compiling nested scripts like lambdas
+struct ScopedClearLoopStartOffsets 
+{
+	std::stack<UInt8*> loopStartOffsets;
+
+	ScopedClearLoopStartOffsets()
+	{
+		this->loopStartOffsets = std::move(s_loopStartOffsets);
+	}
+
+	~ScopedClearLoopStartOffsets()
+	{
+		s_loopStartOffsets = std::move(this->loopStartOffsets);
+	}
+};
+
 static bool compilerConsoleOpened = false;
 PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 {
 	// empty out the loop stack
-	while (!s_loopStartOffsets.empty())
-		s_loopStartOffsets.pop();
+	ScopedClearLoopStartOffsets _offsets;
 
 	g_currentScriptStack.push(script);
 	g_currentCompilerPluginVersions.emplace();
 	g_currentScriptRestorePoundChar.emplace();
+	
+#if RUNTIME
+	if (ScriptDataCache::LoadCachedDataToScript(buf->scriptText, script))
+		return kPrecompile_SpecialCompile;	
+#endif
 
 	// Initialize these, just in case.
 	buf->errorCode = 0;
@@ -512,45 +535,13 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 	// See if new compiler should override script compiler
 	// First token on first line should be 'name'
 	if (!_strnicmp(buf->scriptText, "name", 4)) {
-		CompInfo("\n========================================\n\n");
-		
 		// Just convert script buffer to a string
-		auto program = std::string(buf->scriptText);
-
-		NVSELexer lexer(program);
-		NVSEParser parser(lexer);
-
-		if (auto astOpt = parser.Parse(); astOpt.has_value()) {
-			auto ast = std::move(astOpt.value());
-
-			auto tc = NVSETypeChecker(&ast, script);
-			bool typeCheckerPass = tc.check();
-			
-			auto tp = NVSETreePrinter();
-			ast.Accept(&tp);
-
-			if (!typeCheckerPass) {
-				return PrecompileResult::kPrecompile_Failure;
-			}
-
-			try {
-				NVSECompiler comp{script, buf->partialScript, ast};
-				comp.Compile();
-
-				// Only set script name if not partial
-				if (!buf->partialScript) {
-					buf->scriptName = String();
-					buf->scriptName.Set(comp.scriptName.c_str());
-				}
-
-				printf("Script compiled successfully.\n");
-			} catch (std::runtime_error &er) {
-				CompErr("Script compilation failed: %s\n", er.what());
-				return PrecompileResult::kPrecompile_Failure;
-			}
-		} else {
-			return PrecompileResult::kPrecompile_Failure;
+		const auto scriptStr = std::string(buf->scriptText);
+		if (!Compiler::CompileNVSEScript(scriptStr, script, buf->partialScript)) {
+			return kPrecompile_Failure;
 		}
+
+		printf("Script compiled successfully.\n");
 	}
 
 	else {
@@ -591,7 +582,7 @@ PrecompileResult __stdcall HandleBeginCompile(ScriptBuffer* buf, Script* script)
 			else { // handle versions for plugins
 				auto* pluginInfo = g_pluginManager.GetInfoByName(pluginName.c_str());
 				if (!pluginInfo) [[unlikely]] {
-					CompErr("Script compilation failed: No plugin with name %s could be found.\n", pluginName.c_str());
+					Compiler::ErrPrintln("Script compilation failed: No plugin with name %s could be found.", pluginName.c_str());
 					return PrecompileResult::kPrecompile_Failure;
 				}
 
@@ -669,7 +660,7 @@ namespace Runtime // double-clarify
 	PrecompileResult __fastcall HandleBeginCompile_SetNotCompiled(Script* script, ScriptBuffer* buf, bool isCompiled)
 	{
 		return HandleBeginCompile(buf, script);
-		}
+	}
 
 	__declspec(naked) void HookBeginScriptCompile()
 	{
@@ -688,11 +679,11 @@ namespace Runtime // double-clarify
 			// Also need to set result to 1 (success)
 			mov		al, 1
 
-			fail:
+		fail:
 			// fail, or a plugin custom-compiled the script
 			jmp failOrSpecialCompileAddr //jump here to land in HookEndScriptCompile.
 
-				success :
+		success:
 			jmp retnAddr
 		}
 	}
@@ -707,6 +698,7 @@ namespace Runtime // double-clarify
 			ScriptAndScriptBuffer data{ g_currentScriptStack.top(), buf };
 			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ScriptCompile,
 				&data, sizeof(ScriptAndScriptBuffer), nullptr);
+			ScriptDataCache::AddCompiledScriptToCache(data.scriptBuffer->scriptText, data.script);
 		}
 		PostScriptCompile();
 		return success;
@@ -729,7 +721,7 @@ namespace Runtime // double-clarify
 	}
 
 	char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
-		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
+		if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString)) {
 			parseToken->tokenType = 'X';
 			parseToken->cmdOpcode = commandInfo->opcode;
 			return 1;
@@ -759,6 +751,10 @@ namespace Runtime // double-clarify
 			retn
 		}
 	}
+
+	TESForm* __cdecl HookIsValidVariableName(char* name) {
+		return nullptr;
+	}
 }
 
 void PatchRuntimeScriptCompile()
@@ -780,6 +776,9 @@ void PatchRuntimeScriptCompile()
 	}
 
 	WriteRelJump(0x5B19BA, reinterpret_cast<UInt32>(&Runtime::HookParseCommandToken));
+
+	// Patch variable name check against form
+	WriteRelCall(0x5AFEDB, &Runtime::HookIsValidVariableName);
 }
 
 #endif
@@ -972,7 +971,7 @@ namespace CompilerOverride
 				*((UInt32 *)(buf->scriptData + buf->dataOffset)) = 0x00000011;
 			}
 
-			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName, &g_currentCompilerPluginVersions.top());
+			CommandInfo *cmdInfo = g_scriptCommands.GetByName(cmdName);
 			ASSERT(cmdInfo != NULL);
 
 			// write a call to our cmd
@@ -1121,8 +1120,13 @@ void __fastcall PostScriptCompileSuccess(Script* script, ScriptBuffer* scriptBuf
 //	- If Script->Compile is called in the GECK outside of the vanilla code this will NOT be hit
 //	- Not sure if this is a problem, maybe all plugins should be compiling scripts via NVSE and we can clean up the runtime hooks as well?
 static char __fastcall CompileScriptHook(void* context, void* edx, Script* script, ScriptBuffer *buf) {
-	if (buf == nullptr || buf->scriptText == nullptr) {
+	if (buf == nullptr) {
 		return 1;
+	}
+
+	if (buf->scriptText == nullptr) {
+		// Let original compiler take over for empty script text (i.e. cleanup after removing a partial script)
+		return ThisStdCall<char>(0x5C96E0, context, script, buf);
 	}
 
 	auto precompileResult = HandleBeginCompile(buf, script);
@@ -1222,7 +1226,7 @@ static __declspec(naked) void __cdecl CopyStringArgHook(void)
 }
 
 char __cdecl HandleParseCommandToken(ScriptParseToken* parseToken) {
-	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString, &g_currentCompilerPluginVersions.top())) {
+	if (const auto* commandInfo = g_scriptCommands.GetByName(parseToken->tokenString)) {
 		parseToken->tokenType = 'X';
 		parseToken->cmdOpcode = commandInfo->opcode;
 		return 1;
@@ -1257,6 +1261,10 @@ __declspec(naked) void HookParseCommandToken() {
 	}
 }
 
+TESForm* __cdecl HookIsValidVariableName(char*) {
+	return nullptr;
+}
+
 void Hook_Compiler_Init()
 {
 	// hook beginning of compilation process
@@ -1280,6 +1288,7 @@ void Hook_Compiler_Init()
 	// WriteRelCall(0x5C64AC, reinterpret_cast<UInt32>(&HookParseCommandToken));
 
 	WriteRelJump(0x5C53FD, reinterpret_cast<UInt32>(&HookParseCommandToken));
+	WriteRelCall(0x5C5596, &HookIsValidVariableName);
 }
 
 #else // run-time

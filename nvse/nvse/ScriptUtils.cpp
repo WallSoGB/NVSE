@@ -24,6 +24,8 @@
 #include "Hooks_Editor.h"
 #include "ScriptAnalyzer.h"
 #include "StackVariables.h"
+#include "Hooks_Other.h"
+#include "Compiler/Utils.h"
 
 std::map<std::pair<Script*, std::string>, Script::VariableType> g_variableDefinitionsMap;
 
@@ -145,9 +147,9 @@ std::unique_ptr<ScriptToken> Eval_Comp_Number_Number(OperatorType op, ScriptToke
 	switch (op)
 	{
 	case kOpType_GreaterThan:
-		return ScriptToken::Create(lh->GetNumber() > rh->GetNumber());
+		return ScriptToken::Create(lh->GetNumber() - rh->GetNumber() > DBL_EPSILON);
 	case kOpType_LessThan:
-		return ScriptToken::Create(lh->GetNumber() < rh->GetNumber());
+		return ScriptToken::Create(rh->GetNumber() - lh->GetNumber() > DBL_EPSILON);
 	case kOpType_GreaterOrEqual:
 		return ScriptToken::Create(lh->GetNumber() >= rh->GetNumber());
 	case kOpType_LessOrEqual:
@@ -2280,6 +2282,32 @@ DynamicParamInfo::DynamicParamInfo(const std::vector<UserFunctionParam> &params)
 
 bool ExpressionParser::ParseUserFunctionParameters(std::vector<UserFunctionParam> &out, const std::string &funcScriptText, Script::VarInfoList *funcScriptVars, Script *script) const
 {
+	// Use new parser
+	if (funcScriptText.starts_with("name")) {
+		if (auto result = Compiler::PreProcessNVSEScript(funcScriptText, nullptr, false)) {
+			const auto blocks = result->blocks;
+			if (blocks.size() != 1) {
+				return false;
+			}
+
+			const auto& firstBlock = blocks[0];
+			if (const auto fnDecl = dynamic_cast<const Compiler::Statements::UDFDecl*>(&*firstBlock)) {
+				for (auto& varDeclStmt : fnDecl->args) {
+					if (varDeclStmt->declarations.empty()) {
+						return false;
+					}
+
+					const auto& scopeVar = varDeclStmt->declarations[0].info;
+					out.emplace_back(scopeVar->index, scopeVar->type);
+				}
+			}
+
+			return true;
+		}
+	
+		return false;
+	}
+
 	std::vector<std::string> funcParamNames;
 	if (!GetUserFunctionParamNames(funcScriptText, funcParamNames))
 	{
@@ -3367,7 +3395,7 @@ VariableInfo* CreateVariable(Script* script, ScriptBuffer* scriptBuf, const std:
 		printCompileError("Invalid variable name " + varName + ": Form with that Editor ID already exists.");
 		return nullptr;
 	}
-	if (g_scriptCommands.GetByName(varName.c_str(), &g_currentCompilerPluginVersions.top()))
+	if (g_scriptCommands.GetByName(varName.c_str()))
 	{
 		printCompileError("Invalid variable name " + varName + ": Command with that name already exists.");
 		return nullptr;
@@ -3577,7 +3605,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 	// command?
 	if (!bExpectStringVar)
 	{
-		CommandInfo *cmdInfo = g_scriptCommands.GetByName(token.c_str(), &g_currentCompilerPluginVersions.top());
+		CommandInfo *cmdInfo = g_scriptCommands.GetByName(token.c_str());
 		if (cmdInfo)
 		{
 			// if quest script, check that calling obj supplied for cmds requiring it
@@ -3696,7 +3724,28 @@ VariableInfo *ExpressionParser::LookupVariable(const char *varName, Script::RefV
 std::string ExpressionParser::GetCurToken() const
 {
 	unsigned char ch;
-	const char *tokStart = CurText();
+	const char* tokStart = CurText();
+
+	// Check if we're parsing a string literal
+	if (Peek() == '"')
+	{
+		// Save the position of the opening quote
+		tokStart = CurText();
+
+		Offset()++;
+		// Read until closing quote
+		while ((ch = Peek()) && ch != '"')
+		{
+			Offset()++;
+		}
+
+		if (ch == '"')
+			Offset()++;
+
+		// Return the string including the quotes
+		return std::string(tokStart, CurText() - tokStart);
+	}
+
 	auto numeric = true;
 	while ((ch = Peek()))
 	{
@@ -3706,6 +3755,7 @@ std::string ExpressionParser::GetCurToken() const
 		if (!isdigit(ch))
 			numeric = false;
 	}
+
 	auto result = std::string(tokStart, CurText() - tokStart);
 	if (ch == 0 && result.empty())
 		throw OffsetOutOfBoundsError();
@@ -4917,14 +4967,15 @@ thread_local TokenCache g_tokenCache;
 thread_local std::string g_curLineText;
 #endif
 
-CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consoleTokensContainer)
+CachedTokens* ExpressionEvaluator::GetTokens()
 {
-	// consoleTokensContainer serves as storage for CachedTokens if scriptData is not permanent memory
-	const bool isConsole = script->GetModIndex() == 0xFF && consoleTokensContainer;
-	CachedTokens &cache = !isConsole ? g_tokenCache.Get(GetCommandOpcodePosition(m_opcodeOffsetPtr)) : *(*consoleTokensContainer = CachedTokens());
-	if (isConsole)
-		cache.Clear();
-	if (cache.Empty() || isConsole)
+	auto* ctx = OtherHooks::GetExecutingScriptContext();
+	auto* extraData = ctx->scriptExtraData;
+	thread_local CachedTokens tempCachedTokens;
+	tempCachedTokens.Clear();
+	auto& cache = extraData ? extraData->cache.Get(GetCommandOpcodePosition(m_opcodeOffsetPtr)) : tempCachedTokens;
+
+	if (cache.Empty())
 	{
 		if (!ParseBytecode(cache))
 		{
@@ -4943,7 +4994,7 @@ CachedTokens* ExpressionEvaluator::GetTokens(std::optional<CachedTokens>* consol
 
 ScriptToken *ExpressionEvaluator::Evaluate()
 {
-	CachedTokens* cachePtr = GetTokens(&this->consoleTokens);
+	CachedTokens* cachePtr = GetTokens();
 	if (!cachePtr)
 		return nullptr;
 	auto& cache = *cachePtr;
@@ -5083,8 +5134,7 @@ std::string ExpressionEvaluator::GetLineText()
 	}
 	for (int i = 0; i < numArgs; ++i)
 	{
-		std::optional<CachedTokens> consoleTokens;
-		const auto tokens = this->GetTokens(&consoleTokens);
+		const auto tokens = this->GetTokens();
 		const auto arg = this->GetLineText(*tokens, nullptr);
 		if (numArgs != 1 && tokens->Size() > 1) // if multiple args, separate args with brackets
 			lineText += '(' + arg + ')';
@@ -5328,8 +5378,7 @@ std::string ExpressionEvaluator::GetVariablesText()
 	std::string varText;
 	for (int i = 0; i < numArgs; ++i)
 	{
-		std::optional<CachedTokens> consoleTokens;
-		const auto tokens = this->GetTokens(&consoleTokens);
+		const auto tokens = this->GetTokens();
 		varText += this->GetVariablesText(*tokens);
 		if (i != numArgs - 1)
 			varText += '\n';
@@ -5745,7 +5794,7 @@ bool Preprocessor::Process()
 				if (ra::all_of(line, _L(char c, isalnum(c) || c == '_' || c == ',' || isspace(c)))) // ignore `int i = 0`
 				{
 					auto varNames = SplitString(line, ",");
-					if (!ra::all_of(varNames, _L(auto & varName, ValidateVariable(StripSpace(std::move(varName)), type, m_script))))
+					if (!ra::all_of(varNames, _L(auto & varName, ValidateVariable(StripSpace(varName), type, m_script))))
 						return false;
 				}
 			}

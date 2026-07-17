@@ -19,7 +19,6 @@ namespace OtherHooks
 {
 	const static auto ClearCachedTileMap = &MemoizedMap<const char*, Tile::Value*>::Clear;
 	thread_local FastStack<CurrentScriptContext> g_currentScriptContext;
-	thread_local std::vector<std::function<void()>> g_onExitScripts;
 
 	__declspec(naked) void TilesDestroyedHook()
 	{
@@ -139,7 +138,7 @@ namespace OtherHooks
 		void __fastcall PreScriptExecute(UInt8* ebp, int spot)
 		{
 			// Saves last thisObj in effect/object scripts before they get assigned to something else with dot syntax
-			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData] = *g_currentScriptContext.Push();
+			auto& [script, scriptRunner, lineNumberPtr, scriptOwnerRef, command, curData, extraData] = *g_currentScriptContext.Push();
 			command = nullptr; // set in ExtractArgsEx
 			scriptOwnerRef = *reinterpret_cast<TESObjectREFR**>(ebp + 0xC);
 			script = *reinterpret_cast<Script**>(ebp + 0x8);
@@ -156,6 +155,7 @@ namespace OtherHooks
 				lineNumberPtr = reinterpret_cast<UInt32*>(ebp - 0x28);
 				curData = reinterpret_cast<UInt32*>(ebp - 0x24);
 			}
+			extraData = ScriptTokenCacheFormExtraData::Get(script);
 
 			//Do other stuff
 			// if (g_threadID == -1) {
@@ -210,9 +210,6 @@ namespace OtherHooks
 		{
 			if (script)
 				g_currentScriptContext.Pop();
-			for (auto& func : g_onExitScripts)
-				func();
-			g_onExitScripts.clear();
 		}
 
 		__declspec (naked) void Hook1()
@@ -459,26 +456,186 @@ namespace OtherHooks
 		}
 	}
 
-	namespace Misc {
-		bool __fastcall OnCellLoadFromBuffer(const TESForm* thisPtr) {
-			const auto ptr = *reinterpret_cast<TESObjectREFR**>(GetParentBasePtr(_AddressOfReturnAddress()) - 0x8);
-			if (thisPtr && ptr && ptr->GetNiNode()) {
-				EventManager::DispatchEvent("onloadalt", ptr, ptr);
-			}
 
-			return ThisStdCall<bool>(0x549580, thisPtr);
+	static bool __fastcall CanDispatchScriptEvent(const TESForm* apForm) noexcept {
+		if (BGSSaveLoadGame::GetSingleton()->GetSaveGameLoading())
+			return false;
+
+		// Deleted + Temp
+		if (apForm->flags & 0x204020)
+			return false;
+
+		return true;
+	}
+
+	static void __declspec(noinline) __fastcall DispatchEventSafe(const char* apEventName, const TESForm* apForm) noexcept {
+		if (CanDispatchScriptEvent(apForm))
+			EventManager::DispatchEventThreadSafe(apEventName, nullptr, nullptr, apForm);
+	}
+
+	namespace RefLoading {
+#pragma optimize("y", off)
+		CallDetour kRefSet3D;
+		void __fastcall OnRefSet3DHook(TESObjectREFR* apThis) noexcept {
+			ThisStdCall<void>(kRefSet3D.GetOverwrittenAddr(), apThis);
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			NiAVObject* pNew3D = *reinterpret_cast<NiAVObject**>(pEBP + 0x8);
+			struct Set3DData {
+				TESObjectREFR*	pRef;
+				NiAVObject*		pNewModel;
+			};
+			Set3DData kData{ apThis, pNew3D };
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefSet3D, &kData, sizeof(kData), nullptr);
+			DispatchEventSafe("onrefset3d", apThis);
 		}
 
-		void* __fastcall OnCellLoad(TESObjectREFR* thisPtr) {
-			EventManager::DispatchEvent("onloadalt", thisPtr, thisPtr);
+		CallDetour kRefUnset3D;
+		void __fastcall OnRefUnset3DHook(TESObjectREFR* apThis) noexcept {
+			if (apThis->renderState) {
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefUnset3D, apThis, sizeof(uintptr_t), nullptr);
+				DispatchEventSafe("onrefunset3d", apThis);
+			}
+			ThisStdCall<void>(kRefUnset3D.GetOverwrittenAddr(), apThis);
+		}
 
-			return ThisStdCall<void*>(0x5D43C0, thisPtr);
+		CallDetour kRefAttachToCell;
+		void __fastcall OnRefAttachHook(TESObjectCELL* apThis) noexcept {
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			TESObjectREFR* pRef = *reinterpret_cast<TESObjectREFR**>(pEBP + 0x8);
+			//NiNode* pTargetNode = *reinterpret_cast<NiNode**>(pEBP + 0xC);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnRefAttach, pRef, sizeof(uintptr_t), nullptr);
+			DispatchEventSafe("onrefattach", pRef);
+			ThisStdCall<void>(kRefAttachToCell.GetOverwrittenAddr(), apThis);
 		}
 
 		void WriteHooks() {
-			//WriteRelCall(0x54BC65, &OnCellLoadFromBuffer);
-			//WriteRelCall(0x54BE9A, &OnCellLoad);
+			kRefSet3D.WriteRelCall(0x571090, uint32_t(OnRefSet3DHook));
+			kRefUnset3D.WriteRelCall(0x5710AC, uint32_t(OnRefUnset3DHook));
+			kRefAttachToCell.WriteRelCall(0x549787, uint32_t(OnRefAttachHook));
 		}
+#pragma optimize("y", on)
+	}
+
+	namespace CellLoading {
+		class NVSECellLoadData : public FormExtraData {
+		public:
+			NVSECellLoadData() noexcept : FormExtraData(GetName()) {}
+			virtual ~NVSECellLoadData() override = default;
+
+			bool	bAllRefsLoaded = false;
+			UInt16	usReferenceCount = 0;
+
+			static const NiFixedString& GetName() noexcept {
+				static NiFixedString name = "NVSECellLoadedData";
+				return name;
+			}
+
+			static NVSECellLoadData* Create() noexcept {
+				auto* item = New<NVSECellLoadData>();
+				new(item) NVSECellLoadData();
+				return item;
+			}
+			static NVSECellLoadData* Get(TESObjectCELL* apCell) noexcept {
+				if (auto* existing = FormExtraData::Get(apCell, GetName()))
+					return static_cast<NVSECellLoadData*>(existing);
+				auto* data = Create();
+				FormExtraData::Add(apCell, data);
+				return data;
+			}
+		};
+
+		void __fastcall OnCellStateChange(TESObjectCELL* apThis, void*, uint32_t aeState) noexcept {
+			const uint32_t uiPrevState = apThis->cellState;
+
+			apThis->cellState = aeState;
+
+			// NVSE plugin event
+			{
+				struct CellData {
+					TESObjectCELL*	pCell;
+					uint32_t		uiNewState;
+					uint32_t		uiPreviousState;
+				};
+				CellData kData{ apThis, aeState, uiPrevState };
+				PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellStateChange, &kData, sizeof(kData), nullptr);
+			}
+
+			if (!CanDispatchScriptEvent(apThis))
+				return;
+
+			// Script events
+			switch (aeState) {
+				case TESObjectCELL::kCellLoadState_NotLoaded:
+					break;
+				case TESObjectCELL::kCellLoadState_Unloading:
+					break;
+				case TESObjectCELL::kCellLoadState_Loading:
+					break;
+				case TESObjectCELL::kCellLoadState_Loaded:
+					break;
+				case TESObjectCELL::kCellLoadState_Detaching:
+					EventManager::DispatchEvent("oncelldetach", nullptr, apThis);
+					break;
+				case TESObjectCELL::kCellLoadState_Attaching:
+					break;
+				case TESObjectCELL::kCellLoadState_Attached:
+					EventManager::DispatchEvent("oncellattach", nullptr, apThis);
+					break;
+				default:
+					break;
+			}
+		}
+
+		CallDetour kOnAllRefsLoaded;
+		bool __fastcall OnAllRefsLoadedHook(TESObjectCELL* apThis) noexcept {
+			const bool bResult = ThisStdCall<bool>(kOnAllRefsLoaded.GetOverwrittenAddr(), apThis);
+
+			if (apThis->cellState == TESObjectCELL::kCellLoadState_Attached && apThis->loadedData && apThis->criticalQueuedRefCount == 0 && apThis->queuedRefCount == 0) {
+				NVSECellLoadData* pData = NVSECellLoadData::Get(apThis);
+				if (pData && !pData->bAllRefsLoaded) {
+					apThis->CellRefLockEnter();
+					pData->usReferenceCount = apThis->objectList.Count();
+					pData->bAllRefsLoaded = true;
+					apThis->CellRefLockLeave();
+					PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnCellRefsLoaded, apThis, sizeof(uintptr_t), nullptr);
+					DispatchEventSafe("oncellrefsloaded", apThis);
+				}
+			}
+
+			return bResult;
+		}
+
+
+		void WriteHooks() {
+			WriteRelJump(0x4512A0, uint32_t(OnCellStateChange));
+			kOnAllRefsLoaded.WriteRelCall(0x5518A5, uint32_t(OnAllRefsLoadedHook));
+		}
+	}
+
+	namespace FormLoading_LowLevel {
+#pragma optimize("y", off)
+		// No script equivalent, too early
+		CallDetour kOnFormLoad;
+		bool __fastcall OnFormLoad(void* apThis) noexcept {
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormLoad, pForm, sizeof(pForm), nullptr);
+			return ThisStdCall<bool>(kOnFormLoad.GetOverwrittenAddr(), apThis);
+		}
+
+		CallDetour kOnFormUnload;
+		void* __fastcall OnFormUnload(void* apThis, void*, MEM_CONTEXT aeContext, bool abOverridable, const char* apFile, uint32_t auiLine) noexcept {
+			uint8_t* pEBP = GetParentBasePtr(_AddressOfReturnAddress());
+			TESForm* pForm = *reinterpret_cast<TESForm**>(pEBP + 0x8);
+			PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnNonPersistentFormUnload, pForm, sizeof(pForm), nullptr);
+			return ThisStdCall<void*>(kOnFormUnload.GetOverwrittenAddr(), apThis, aeContext, abOverridable, apFile, auiLine);
+		}
+
+		void WriteHooks() {
+			kOnFormLoad.WriteRelCall(0x8495DC, uint32_t(OnFormLoad));
+			kOnFormUnload.WriteRelCall(0x849769, uint32_t(OnFormUnload));
+		}
+#pragma optimize("y", on)
 	}
 
 	void Hooks_Other_Init()
@@ -498,14 +655,19 @@ namespace OtherHooks
 
 		WriteRelCall(0x60D876, ResetQuestReallocateEventListHook);
 
-		*(UInt32*)0x0126FDF4 = 1; // locale fix
-
 		IMod::WriteHooks();
 		Locks::WriteHooks();
 		Terminal::WriteHooks();
 		Repair::WriteHooks();
 		DisEnable::WriteHooks();
-		Misc::WriteHooks();
+		RefLoading::WriteHooks();
+		CellLoading::WriteHooks();
+		FormLoading_LowLevel::WriteHooks();
+	}
+	
+	void ApplyLocaleFixHook()
+	{
+		*reinterpret_cast<UInt32*>(0x0126FDF4) = 1; // locale fix
 	}
 
 	thread_local CurrentScriptContext emptyCtx{}; // not every command gets run through script runner

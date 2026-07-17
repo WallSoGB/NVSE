@@ -270,6 +270,32 @@ struct NVSEMessagingInterface
 								// RUNTIME: also gets called after successful script compilation at runtime via functions.
 		kMessage_EventListDestroyed, // called before a script event list is destroyed, dataLen: 4, data: ScriptEventList* ptr
 		kMessage_PostQueryPlugins, // called after all plugins have been queried
+
+		kMessage_OnFramePresent, // called when the game is about to present a frame
+
+		kMessage_ReloadConfig, // sent via ReloadPluginConfig command
+							   // dataLen: length of plugin name, data: const char* pluginName
+
+		kMessage_OnRefSet3D,	// sent when reference receives a non-null scene object
+								// dataLen: 8, data: reference pointer and new scene object pointer
+
+		kMessage_OnRefUnset3D,	// sent when reference receives a null scene object
+								// dataLen: 4, data: reference pointer
+
+		kMessage_OnRefAttach,	// sent when reference is attached to the cell (end of TESObjectCELL::PerformCellNodeAttach
+								// dataLen: 4, data : reference pointer
+
+		kMessage_OnCellStateChange, // sent when cell changes its load state (TESObjectCELL::SetState)
+									// datalen: 12, data: cell pointer, new state, previous state
+
+		kMessage_OnCellRefsLoaded, // sent when all references of a cell are loaded
+								   // dataLen: 4, data: cell pointer
+
+		kMessage_OnNonPersistentFormLoad,	// sent when an unloaded form is loaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
+											// dataLen: 4, data: form pointer
+
+		kMessage_OnNonPersistentFormUnload, // sent when a loaded form is unloaded by the game (TESObjectREFR, NavMeshInfo) (both cell, and save loads)
+											// dataLen: 4, data: form pointer	
 	};
 
 	UInt32	version;
@@ -491,7 +517,7 @@ struct NVSEArrayVarInterface
 struct NVSECommandTableInterface
 {
 	enum {
-		kVersion = 1
+		kVersion = 2
 	};
 
 	UInt32	version;
@@ -503,6 +529,7 @@ struct NVSECommandTableInterface
 	UInt32				(* GetRequiredNVSEVersion)(const CommandInfo* cmd);
 	const PluginInfo*	(* GetParentPlugin)(const CommandInfo* cmd);	// returns a pointer to the PluginInfo of the NVSE plugin that adds the command, if any. returns NULL otherwise
 	const PluginInfo*	(* GetPluginInfoByName)(const char *pluginName);	// Returns a pointer to the PluginInfo of the NVSE plugin of the specified name; returns NULL is the plugin is not loaded.
+	const PluginInfo*	(* GetPluginInfoByDLLName)(const char* dllName);	// Returns a pointer to the PluginInfo of the NVSE plugin with the specified DLL name; returns NULL if the plugin is not loaded.
 };
 
 /**** script API docs **********************************************************
@@ -632,6 +659,11 @@ struct NVSEDataInterface
 		kNVSEData_IsScriptLambda,
 		kNVSEData_HasScriptCommand,
 		kNVSEData_DecompileScript,
+		kNVSEData_FormExtraDataGet,
+		kNVSEData_FormExtraDataGetAll,
+		kNVSEData_FormExtraDataAdd,
+		kNVSEData_FormExtraDataRemoveByName,
+		kNVSEData_FormExtraDataRemoveByPtr,
 		
 		kNVSEData_FuncMax,
 	};
@@ -646,6 +678,99 @@ struct NVSEDataInterface
 	void (*ClearScriptDataCache)();
 	// v3
 
+};
+
+// --- PluginFormExtraData ---
+// extend this class and allocate the pointer to it with the game's heap
+// then use the static methods to add, get, and remove it from a form
+// Class is ref counted, so you can use NiPointer to hold it safely.
+// 
+// Example class:
+// class MyFormExtraData: public PluginFormExtraData { 
+// public:
+//	   MyFormExtraData() : PluginFormExtraData(MyFormExtraData::GetName()) {}		
+//     virtual ~MyFormExtraData() override = default;
+//     std::vector<float> myAttachedData;
+//     static const NiFixedString& GetName() { static NiFixedString name = "MyFormExtraData"; return name; }
+// };
+// 
+// Example creation:
+// auto* data = New<MyFormExtraData>(); // be sure to use the game's heap allocator
+// new (data) MyFormExtraData(); // initialize the vtable
+// data->myAttachedData.emplace_back(1.0f);
+// PluginFormExtraData::Add(s_nvseDataApi, actor, data);
+// 
+// Example retrieval:
+// NiPointer<MyFormExtraData> extraData = (MyFormExtraData*)PluginFormExtraData::Get(s_nvseDataApi, actor, MyFormExtraData::GetName());
+//
+// Example removal:
+// PluginFormExtraData::Remove(s_nvseDataApi, actor, extraData);
+// or
+// PluginFormExtraData::Remove(s_nvseDataApi, actor, MyFormExtraData::GetName());
+//
+// Example enumeration:
+// UInt32 count = PluginFormExtraData::GetAllExtraData(s_nvseDataApi, actor, nullptr); // get the count first
+// PluginFormExtraData** data = new PluginFormExtraData*[count]; // allocate an array of pointers
+// PluginFormExtraData::GetAllExtraData(s_nvseDataApi, actor, data); // retrieve the data
+// delete[] data; // clean up the array
+class PluginFormExtraData
+{
+public:
+	NiFixedString	name;
+	UInt32			refCount = 0;
+
+	PluginFormExtraData(const NiFixedString& aName) : name(aName), refCount(0) {}
+	virtual ~PluginFormExtraData() {};
+	virtual void DeleteThis() {
+		this->~PluginFormExtraData();
+		FormHeap_Free(this);
+	};
+
+	void IncRefCount() {
+		InterlockedIncrement(&refCount);
+	}
+
+	void DecRefCount() {
+		if (InterlockedDecrement(&refCount) == 0) {
+			DeleteThis();
+		}
+	}
+
+	// Retrieves extra data from a form by name.
+	static inline PluginFormExtraData* Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name)
+	{
+		static auto* get = (PluginFormExtraData*(*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
+		return get(form, name);
+	}
+
+	// Adds extra data to a form.
+	// Returns true if the extra data was added successfully, false if it already exists, or arguments are null.
+	static inline bool Add(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData)
+	{
+		static auto* add = (bool(*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataAdd);
+		return add(form, extraData);
+	}
+
+	// Removes extra data from a form by name.
+	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name)
+	{
+		static auto* remove = (void (*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName);
+		remove(form, name);
+	}
+
+	// Removes extra data from a form by pointer to the data.
+	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData)
+	{
+		static auto* remove = (void (*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr);
+		remove(form, extraData);
+	}
+
+	// Retrieves all extra data from a form.
+	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
+	static inline UInt32 GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, PluginFormExtraData** outData) {
+		static auto* getAll = (UInt32(*)(const TESForm*, PluginFormExtraData**)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
+		return getAll(form, outData);
+	}
 };
 
 //== Type definitions of function pointers, to easily cast the functions returned by NVSEDataInterface::GetFunc
@@ -862,17 +987,17 @@ struct NVSEEventManagerInterface
 		eParamType_ReferencePtr,
 		eParamType_BaseFormPtr
 	};
-	static [[nodiscard]] bool IsFormParam(ParamType pType)
+	[[nodiscard]] static bool IsFormParam(ParamType pType)
 	{
 		return pType == eParamType_RefVar || pType == eParamType_Reference || pType == eParamType_BaseForm
 		 || pType == eParamType_Anything;
 	}
-	static [[nodiscard]] bool IsPtrParam(ParamType pType)
+	[[nodiscard]] static bool IsPtrParam(ParamType pType)
 	{
 		return (pType >= eParamType_FloatPtr) && (pType <= eParamType_BaseFormPtr);
 	}
 	// Gets the regular non-ptr version of the param
-	static [[nodiscard]] ParamType GetNonPtrParamType(ParamType pType)
+	[[nodiscard]] static ParamType GetNonPtrParamType(ParamType pType)
 	{
 		if (IsPtrParam(pType))
 		{

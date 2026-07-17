@@ -443,11 +443,27 @@ void CommandTable::Read(CommandInfo *start, CommandInfo *end)
 		Add(start);
 }
 
+namespace
+{
+	UnorderedMap<const char*, UInt32> g_cmdTableCache;
+}
+
 void CommandTable::Add(CommandInfo* info, CommandReturnType retnType, UInt32 parentPluginOpcodeBase, UInt32 version)
 {
+
 	UInt32 backCommandID = m_baseID + m_commands.size(); // opcode of the next command to add
 
 	info->opcode = m_curID;
+
+	// Rename JIPs ar_Cat
+	if (info->opcode == 8896) {
+		info->longName = "JIP_ar_Cat";
+		info->shortName = "JIP_pinto_Cat";
+		_MESSAGE("Patched Ar_Cat");
+	}
+
+	g_cmdTableCache.Emplace(info->longName, info->opcode);
+	g_cmdTableCache.Emplace(info->shortName, info->opcode);
 
 	if (m_curID == backCommandID)
 	{
@@ -528,6 +544,14 @@ void CommandTable::Dump(void)
 	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter)
 	{
 		_DMESSAGE("%08X %04X %s %s", iter->opcode, iter->needsParent, iter->longName, iter->shortName);
+	}
+}
+
+void CommandTable::DumpWikiDocs(void) {
+	_MESSAGE("## Command List\n");
+	for (CommandList::iterator iter = m_commands.begin(); iter != m_commands.end(); ++iter) {
+		iter->DumpWikiDocs();
+		_MESSAGE("\n\n");
 	}
 }
 
@@ -1199,36 +1223,10 @@ void CommandInfo::DumpFunctionDef(CommandMetadata* metadata) const
 	}
 }
 
-CommandInfo *CommandTable::GetByName(const char* name, std::unordered_map<std::string, UInt32> *pluginVersions)
+CommandInfo *CommandTable::GetByName(const char* name)
 {
-	for (CommandList::reverse_iterator iter = m_commands.rbegin(); iter != m_commands.rend(); ++iter) {
-		if (!StrCompare(name, iter->longName) || (iter->shortName && !StrCompare(name, iter->shortName))) {
-			auto *cmd = &(*iter);
-
-			// Versioned command, only return if script specifies a plugin version and specified version <= plugin version
-			if (auto updateInfo = m_updateCommands.find(cmd->opcode); updateInfo != m_updateCommands.end()) {
-				auto cmdPluginName = std::string(std::get<0>(updateInfo->second));
-				auto cmdVersion = std::get<1>(updateInfo->second);
-
-				std::ranges::transform(cmdPluginName, cmdPluginName.begin(), [](unsigned char c) { return std::tolower(c); });
-
-				if (pluginVersions->contains(cmdPluginName)) {
-					if (cmdVersion <= (*pluginVersions)[cmdPluginName]) {
-						return cmd;
-					}
-				}
-				else {
-					return cmd;
-				}
-			}
-
-			// Not a versioned command
-			else {
-				return cmd;
-			}
-		}
-	}
-
+	if (auto iter = g_cmdTableCache.Find(name); !iter.End())
+		return GetByOpcode(iter.Get());
 	return nullptr;
 }
 
@@ -2281,6 +2279,32 @@ void CommandTable::AddCommandsV6()
 	ADD_CMD_RET(GetDoorSound, kRetnType_Form);
 
 	ADD_CMD(FireChallenge);
+
+	// 6.4 beta 05
+	ADD_CMD_RET(GetDisabledKeys, kRetnType_Array);
+
+	ADD_CMD(ReloadPluginConfig);
+
+	// 6.4 beta 06
+	ADD_CMD_RET(GetPressedKeys, kRetnType_Array);
+	ADD_CMD_RET(GetStringVariable, kRetnType_String);
+	ADD_CMD(SetStringVariable);
+	ADD_CMD(ar_Cat);
+	ADD_CMD(Jmp_If_True);
+	ADD_CMD(Jmp_If_False);
+	ADD_CMD(Jmp);
+
+	// 6.4 beta 08
+	ADD_CMD(V3NormalizeEx);
+	ADD_CMD(V3CrossproductEx);
+	ADD_CMD(QFromEulerEx);
+	ADD_CMD(QFromAxisAngleEx);
+	ADD_CMD(QNormalizeEx);
+	ADD_CMD(QMultQuatQuatEx);
+	ADD_CMD(QMultQuatVector3Ex);
+	ADD_CMD(QInterpolateEx);
+	ADD_CMD(QToEulerEx);
+	ADD_CMD(GetUIFloatInherited);
 }
 
 namespace PluginAPI
@@ -2293,6 +2317,7 @@ namespace PluginAPI
 	UInt32 GetReqVersion(const CommandInfo *cmd) { return g_scriptCommands.GetRequiredNVSEVersion(cmd); }
 	const PluginInfo *GetCmdParentPlugin(const CommandInfo *cmd) { return g_scriptCommands.GetParentPlugin(cmd); }
 	const PluginInfo *GetPluginInfoByName(const char *pluginName) { return g_pluginManager.GetInfoByName(pluginName); }
+	const PluginInfo* GetPluginInfoByDLLName(const char* DLLName) { return g_pluginManager.GetInfoByDLLName(DLLName); }
 }
 
 std::string ParamInfo::GetAsString(const CommandInfo& info) const

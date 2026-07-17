@@ -29,6 +29,7 @@
 #include "UnitTests.h"
 #include "GameUI.h"
 #include "CachedScripts.h"
+#include "ScriptDataCache.h"
 
 static void HandleMainLoopHook(void);
 
@@ -926,21 +927,26 @@ static void HandleMainLoopHook(void)
 				b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], NULL);
 
 		}
+		ScriptDataCache::LoadScriptDataCacheFromFile();
 #endif
 		
 		PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_DeferredInit, NULL, 0, NULL);
 
 #if RUNTIME
 		CacheAllScriptsInPath(ScriptFilesPath);
+		ScriptDataCache::SaveScriptDataCacheToFile();
 		ExecuteRuntimeUnitTests();
+		OtherHooks::ApplyLocaleFixHook(); // done here after script runner is done so that script compilation is faster
 #endif
 	}
 	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_MainGameLoop, nullptr, 0, nullptr);
 
 	// if any temporary references to inventory objects exist, clean them up
-	if (!s_invRefMap.Empty()) {
+	{
 		ScopedLock lock(s_invRefMapCS);
-		s_invRefMap.Clear();
+		if (!s_invRefMap.Empty()) {
+			s_invRefMap.Clear();
+		}
 	}
 
 	// Tick event manager
@@ -1113,6 +1119,13 @@ __declspec(naked) void MainMenuFromIngameMenuHook()
 	}
 }
 
+template<bool isLoadingScreen>
+void DisplayFrameHook() {
+	int loadingScreen = isLoadingScreen;
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_OnFramePresent, &loadingScreen, sizeof(loadingScreen), nullptr);
+	CdeclCall(0xB6B730);
+}
+
 void Hook_Gameplay_Init(void)
 {
 	// game main loop
@@ -1126,6 +1139,9 @@ void Hook_Gameplay_Init(void)
 	WriteRelCall(kMainMenuFromIngameMenuPatchAddr, (UInt32)&MainMenuFromIngameMenuHook);
 	WriteRelJump(kExitGameViaQQQPatchAddr, (UInt32)&ExitGameViaQQQHook);
 	WriteRelJump(kExitGameFromMenuPatchAddr, (UInt32)&ExitGameFromMenuHook);
+
+	WriteRelCall(0x87055E, DisplayFrameHook<false>); // Mainloop
+	WriteRelCall(0x7147C4, DisplayFrameHook<true>); // Loading screen
 
 	// this seems stable and helps in debugging, but it makes large files during gameplay
 #if _DEBUG

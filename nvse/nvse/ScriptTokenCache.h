@@ -2,6 +2,9 @@
 #include "containers.h"
 #include "ScriptTokens.h"
 #include <atomic>
+#include "FormExtraData.h"
+
+
 struct TokenCacheEntry
 {
 	ScriptToken*	token;
@@ -38,4 +41,17 @@ public:
 	[[nodiscard]] std::size_t Size() const;
 	[[nodiscard]] bool Empty() const;
 	static void MarkForClear();
+};
+
+class ScriptTokenCacheFormExtraData : public FormExtraData
+{
+public:
+	ScriptTokenCacheFormExtraData();
+	virtual ~ScriptTokenCacheFormExtraData() override = default;
+
+	TokenCache cache;
+
+	static ScriptTokenCacheFormExtraData* Create();
+	static ScriptTokenCacheFormExtraData* Get(Script* script);
+	static const NiFixedString& GetName();
 };

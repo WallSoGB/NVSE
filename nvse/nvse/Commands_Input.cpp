@@ -7,15 +7,66 @@
 #include <map>
 #include <set>
 #include "GameScript.h"
+#include "ArrayVar.h"
+#include <Xinput.h>
+
+#define XINPUT_GAMEPAD_GUIDE 0x400
 
 static bool IsKeycodeValid(UInt32 id)		{ return (id < kMaxMacros - 2) && (id != 0xFF); }
 
-enum
-{
-	kControlType_Keyboard,
-	kControlType_Mouse,
-	kControlType_Joystick
-};
+uint32_t BS2DX(uint32_t bethesdaCode) {
+	return ThisStdCall<uint32_t>(0xA24080, *g_OSInputGlobals, bethesdaCode);
+}
+
+uint8_t DX2BS(uint32_t xinputCode) {
+	switch (xinputCode) {
+		case XINPUT_GAMEPAD_DPAD_UP:
+			return 1;
+		case XINPUT_GAMEPAD_DPAD_DOWN:
+			return 2;
+		case XINPUT_GAMEPAD_DPAD_RIGHT:
+			return 4;
+		case XINPUT_GAMEPAD_DPAD_LEFT:
+			return 5;
+		case XINPUT_GAMEPAD_START:
+			return 6;
+		case XINPUT_GAMEPAD_BACK:
+			return 7;
+		case XINPUT_GAMEPAD_LEFT_THUMB:
+			return 8;
+		case XINPUT_GAMEPAD_RIGHT_THUMB:
+			return 9;
+		case XINPUT_GAMEPAD_A:
+			return 10;
+		case XINPUT_GAMEPAD_B:
+			return 11;
+		case XINPUT_GAMEPAD_X:
+			return 12;
+		case XINPUT_GAMEPAD_Y:
+			return 13;
+		case XINPUT_GAMEPAD_RIGHT_SHOULDER:
+			return 14;
+		case XINPUT_GAMEPAD_LEFT_SHOULDER:
+			return 15;
+		default:
+			return 30;
+	}
+}
+
+bool IsDisallowedControllerButton(UInt32 keycode) {
+	switch (keycode) {
+		case XINPUT_GAMEPAD_DPAD_UP:
+		case XINPUT_GAMEPAD_DPAD_DOWN:
+		case XINPUT_GAMEPAD_DPAD_RIGHT:
+		case XINPUT_GAMEPAD_DPAD_LEFT:
+		case XINPUT_GAMEPAD_START:
+		case XINPUT_GAMEPAD_BACK:
+		case XINPUT_GAMEPAD_GUIDE:
+			return true;
+		default:
+			return false;
+	}
+}
 
 UInt32 GetControl(UInt32 whichControl, UInt32 type)
 {
@@ -28,18 +79,22 @@ UInt32 GetControl(UInt32 whichControl, UInt32 type)
 
 	switch (type)
 	{
-		case kControlType_Keyboard:
-			result = globs->keyBinds[whichControl];
+		case OSInputGlobals::kControlType_Keyboard:
+			result = globs->keyBinds[OSInputGlobals::kControlType_Keyboard][whichControl];
 			break;
 
-		case kControlType_Mouse:
-			result = globs->mouseBinds[whichControl];
+		case OSInputGlobals::kControlType_Mouse:
+			result = globs->keyBinds[OSInputGlobals::kControlType_Mouse][whichControl];
 
 			if(result != 0xFF) result += 0x100;
 			break;
 
-		case kControlType_Joystick:
-			result = globs->joystickBinds[whichControl];
+		case OSInputGlobals::kControlType_Joystick:
+			result = globs->keyBinds[OSInputGlobals::kControlType_Joystick][whichControl];
+			break;
+
+		case OSInputGlobals::kControlType_Gamepad:
+			result = BS2DX(globs->keyBinds[OSInputGlobals::kControlType_Gamepad][whichControl]);
 			break;
 
 		default:
@@ -57,8 +112,15 @@ void SetControl(UInt32 whichControl, UInt32 type, UInt32 keycode)
 	if(whichControl >= globs->kMaxControlBinds)
 		return;
 
-	UInt8	* binds = (type == kControlType_Mouse) ? globs->mouseBinds : globs->keyBinds;
-	keycode = (keycode >= 0x100) ? keycode - 0x100 : keycode;
+	UInt8	* binds = globs->keyBinds[type];
+	if (type == OSInputGlobals::kControlType_Gamepad) {
+		if (IsDisallowedControllerButton(keycode))
+			return;
+
+		keycode = DX2BS(keycode);
+	}
+	else
+		keycode = (keycode >= 0x100) ? keycode - 0x100 : keycode;
 
 	// if specified key already used by another control, swap with the new one
 	for(UInt32 i = 0; i < OSInputGlobals::kMaxControlBinds; i++)
@@ -71,12 +133,12 @@ void SetControl(UInt32 whichControl, UInt32 type, UInt32 keycode)
 	}
 
 	binds[whichControl] = keycode;
-}	
+}
 
 bool IsControl(UInt32 key)
 {
 	OSInputGlobals	* globs = *g_OSInputGlobals;
-	UInt8			* binds = key >= 0x100 ? globs->mouseBinds : globs->keyBinds;
+	UInt8			* binds = globs->keyBinds[key >= 0x100 ? OSInputGlobals::kControlType_Mouse : OSInputGlobals::kControlType_Keyboard];
 
 	key = (key >= 0x100) ? key - 0x100 : key;
 
@@ -111,7 +173,7 @@ bool Cmd_TapKey_Execute(COMMAND_ARGS)
 	*result = 0;
 	UInt32	keycode = 0;
 
-	if(ExtractArgs(EXTRACT_ARGS, &keycode)) 
+	if(ExtractArgs(EXTRACT_ARGS, &keycode))
 		DIHookControl::GetSingleton().TapKey(keycode);
 
 	return true;
@@ -176,9 +238,14 @@ bool Cmd_IsKeyDisabled_Execute(COMMAND_ARGS)
 
 bool Cmd_GetNumKeysPressed_Execute(COMMAND_ARGS)
 {
+	UInt32 flags=0;
 	DWORD count=0;
-	for(DWORD d=0; d < 256; d++) 
-		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d)) 
+
+	if(!ExtractArgs(EXTRACT_ARGS, &flags))
+		return true;
+
+	for(DWORD d = 0; d < 256; d++)
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d, flags))
 			count++;
 
 	*result = count;
@@ -192,13 +259,15 @@ bool Cmd_GetNumKeysPressed_Execute(COMMAND_ARGS)
 bool Cmd_GetKeyPress_Execute(COMMAND_ARGS)
 {
 	*result = -1;
+	UInt32 flags=0;
 	UInt32 count=0;
-	if(!ExtractArgs(EXTRACT_ARGS, &count))
+
+	if(!ExtractArgs(EXTRACT_ARGS, &count, &flags))
 		return true;
 
 	for(DWORD d = 0; d < 256; d++)
 	{
-		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d) && (!count--)) 
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d, flags) && (!count--))
 		{
 			*result = d;
 			break;
@@ -214,7 +283,7 @@ bool Cmd_GetNumMouseButtonsPressed_Execute(COMMAND_ARGS)
 	//Include mouse wheel? Probably not...
 
 	for(DWORD d = 256; d < kMaxMacros -2; d++)
-		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d)) 
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d))
 			count++;
 
 	*result = count;
@@ -229,7 +298,7 @@ bool Cmd_GetMouseButtonPress_Execute(COMMAND_ARGS)
 	*result = -1;
 	UInt32 count=0;
 
-	if(!ExtractArgs(EXTRACT_ARGS, &count)) 
+	if(!ExtractArgs(EXTRACT_ARGS, &count))
 		return true;
 
 	for(DWORD d = 256; d < kMaxMacros - 2; d++)
@@ -256,7 +325,7 @@ bool Cmd_MenuTapKey_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &keycode))
 		return true;
 
-	if(keycode < 256) 
+	if(keycode < 256)
 		DIHookControl::GetSingleton().BufferedKeyTap(keycode);
 
 	return true;
@@ -267,7 +336,7 @@ bool Cmd_MenuHoldKey_Execute(COMMAND_ARGS)
 	*result = 0;
 	UInt32	keycode = 0;
 
-	if(ExtractArgs(EXTRACT_ARGS, &keycode) && keycode < 256) 
+	if(ExtractArgs(EXTRACT_ARGS, &keycode) && keycode < 256)
 		DIHookControl::GetSingleton().BufferedKeyPress(keycode);
 
 	return true;
@@ -301,8 +370,8 @@ bool SetControlDisableState_Execute(COMMAND_ARGS, bool bDisable)
 		if(ctrl < OSInputGlobals::kMaxControlBinds)
 		{
 			s_disabledControls[ctrl].Write(mask, bDisable);
-			DIHookControl::GetSingleton().SetKeyDisableState(GetControl(ctrl, kControlType_Keyboard), bDisable, mask);
-			DIHookControl::GetSingleton().SetKeyDisableState(GetControl(ctrl, kControlType_Mouse), bDisable, mask);
+			DIHookControl::GetSingleton().SetKeyDisableState(GetControl(ctrl, OSInputGlobals::kControlType_Keyboard), bDisable, mask);
+			DIHookControl::GetSingleton().SetKeyDisableState(GetControl(ctrl, OSInputGlobals::kControlType_Mouse), bDisable, mask);
 		}
 	}
 
@@ -333,13 +402,14 @@ bool Cmd_IsControlDisabled_Execute(COMMAND_ARGS)
 bool Cmd_GetControl_Execute(COMMAND_ARGS)
 {
 	UInt32 whichControl = 0;
+	UInt32 whichDevice = OSInputGlobals::kControlType_Keyboard;
 	*result = -1;
 
-	if(!ExtractArgs(EXTRACT_ARGS, &whichControl))
+	if(!ExtractArgs(EXTRACT_ARGS, &whichControl, &whichDevice) || whichDevice < OSInputGlobals::kControlType_Keyboard || whichDevice > OSInputGlobals::kControlType_Gamepad)
 		return true;
 
-	UInt8 ctrl = GetControl(whichControl, kControlType_Keyboard);
-	*result = (ctrl == 0xFF) ? -1 : ctrl;
+	UInt32 ctrl = GetControl(whichControl, whichDevice);
+	*result = (ctrl == 0xFF) ? -1.0 : ctrl;
 
 	if(IsConsoleMode())
 		Console_Print("GetControl %d >> %.0f", whichControl, *result);
@@ -355,8 +425,8 @@ bool Cmd_GetAltControl_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &whichControl))
 		return true;
 
-	UInt8 ctrl = GetControl(whichControl, kControlType_Mouse);
-	*result = (ctrl == 0xFF) ? -1 : ctrl;
+	UInt8 ctrl = GetControl(whichControl, OSInputGlobals::kControlType_Mouse);
+	*result = (ctrl == 0xFF) ? -1.0 : ctrl;
 
 	if(IsConsoleMode())
 		Console_Print("GetAltControl %d >> %.0f", whichControl, *result);
@@ -369,13 +439,13 @@ bool Cmd_IsControlPressed_Eval(COMMAND_ARGS_EVAL)
 	*result = 0;
 
 	UInt32 ctrl = (UInt32)arg1;
-	UInt32 keycode = GetControl(ctrl, kControlType_Keyboard);
+	UInt32 keycode = GetControl(ctrl, OSInputGlobals::kControlType_Keyboard);
 
 	if(keycode != 0xFF && DIHookControl::GetSingleton().IsKeyPressed(keycode))
 		*result = 1;
 	else
 	{
-		keycode = GetControl(ctrl, kControlType_Mouse);
+		keycode = GetControl(ctrl, OSInputGlobals::kControlType_Mouse);
 		if(keycode != 0xFF && DIHookControl::GetSingleton().IsKeyPressed(keycode))
 			*result = 1;
 	}
@@ -393,7 +463,7 @@ bool Cmd_IsControlPressed_Execute(COMMAND_ARGS)
 
 	return true;
 }
-		
+
 bool Cmd_TapControl_Execute(COMMAND_ARGS)
 {
 	//returns false if control is not assigned
@@ -403,9 +473,9 @@ bool Cmd_TapControl_Execute(COMMAND_ARGS)
 
 	if(ExtractArgs(EXTRACT_ARGS, &ctrl))
 	{
-		keycode = GetControl(ctrl, kControlType_Mouse);
+		keycode = GetControl(ctrl, OSInputGlobals::kControlType_Mouse);
 		if(!IsKeycodeValid(keycode))
-			keycode = GetControl(ctrl, kControlType_Keyboard);
+			keycode = GetControl(ctrl, OSInputGlobals::kControlType_Keyboard);
 
 		if(IsKeycodeValid(keycode))
 		{
@@ -422,9 +492,9 @@ bool Cmd_SetControl_Execute(COMMAND_ARGS)
 	*result = 0;
 	UInt32 key = 0;
 	UInt32 ctrl = 0;
-
-	if(ExtractArgs(EXTRACT_ARGS, &ctrl, &key))
-		SetControl(ctrl, kControlType_Keyboard, key);
+	UInt32 device = OSInputGlobals::kControlType_Keyboard;
+	if(ExtractArgs(EXTRACT_ARGS, &ctrl, &key, &device) && device >= OSInputGlobals::kControlType_Keyboard && device <= OSInputGlobals::kControlType_Gamepad)
+		SetControl(ctrl, device, key);
 
 	return true;
 }
@@ -436,7 +506,7 @@ bool Cmd_SetAltControl_Execute(COMMAND_ARGS)
 	UInt32 ctrl = 0;
 
 	if(ExtractArgs(EXTRACT_ARGS, &ctrl, &key))
-		SetControl(ctrl, kControlType_Mouse, key);
+		SetControl(ctrl, OSInputGlobals::kControlType_Mouse, key);
 
 	return true;
 }
@@ -486,6 +556,51 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 	Set<UInt8> *modIdxSet = s_registeredControls.GetPtr(key);
 	if (modIdxSet && !modIdxSet->Empty())
 		*result += 2;
+
+	return true;
+}
+
+
+bool Cmd_GetDisabledKeys_Execute(COMMAND_ARGS)
+{
+
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
+
+	for(UInt32 d = 0; d < kMaxMacros - 2; d++)
+	{
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyDisabled(d))
+		{
+			arr->SetElementNumber(arrIndex, d);
+			arrIndex += 1;
+		}
+	}
+
+	return true;
+}
+
+
+bool Cmd_GetPressedKeys_Execute(COMMAND_ARGS)
+{
+
+	UInt32 flags=0;
+
+	if(!ExtractArgs(EXTRACT_ARGS, &flags))
+		return true;
+
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	*result = arr->ID();
+	double arrIndex = 0;
+
+	for(UInt32 d = 0; d < kMaxMacros - 2; d++)
+	{
+		if(IsKeycodeValid(d) && DIHookControl::GetSingleton().IsKeyPressed(d, flags))
+		{
+			arr->SetElementNumber(arrIndex, d);
+			arrIndex += 1;
+		}
+	}
 
 	return true;
 }

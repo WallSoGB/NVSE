@@ -28,6 +28,7 @@
 #endif
 
 #include <filesystem>
+#include <algorithm>
 
 namespace ExportedToPlugins
 {
@@ -91,7 +92,8 @@ static const NVSECommandTableInterface g_NVSECommandTableInterface =
 	PluginAPI::GetCmdRetnType,
 	PluginAPI::GetReqVersion,
 	PluginAPI::GetCmdParentPlugin,
-	PluginAPI::GetPluginInfoByName
+	PluginAPI::GetPluginInfoByName,
+	PluginAPI::GetPluginInfoByDLLName
 };
 
 static const NVSEInterface g_NVSEInterface =
@@ -288,6 +290,21 @@ PluginInfo * PluginManager::GetInfoFromBase(UInt32 baseOpcode)
 	return NULL;
 }
 
+PluginInfo* PluginManager::GetInfoByDLLName(const char* DLLName) {
+	HMODULE module = GetModuleHandleA(DLLName);
+	if (!module) 
+		return nullptr;
+
+	for (LoadedPluginList::iterator iter = m_plugins.begin(); iter != m_plugins.end(); ++iter)
+	{
+		LoadedPlugin* plugin = &(*iter);
+		if (plugin->handle == module)
+			return &plugin->info;
+	}
+
+	return nullptr;
+}
+
 const char * PluginManager::GetPluginNameFromHandle(PluginHandle handle)
 {
 	if (handle > 0 && handle <= m_plugins.size())
@@ -464,9 +481,11 @@ void * PluginManager::QueryInterface(UInt32 id)
 	case kInterface_Logging:
 		result = (void*)&g_NVSELoggingInterface;
 		break;
+#if RUNTIME
 	case kInterface_PlayerControls:
 		result = (void*)&g_NVSETogglePlayerControlsInterface;
 		break;
+#endif
 	default:
 		_WARNING("unknown QueryInterface %08X", id);
 		break;
@@ -601,7 +620,7 @@ bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
 		s_currentLoadingPlugin = &plugin;
 		s_currentPluginHandle = index;	// +1 because 0 is reserved for internal use
 
-		plugin.handle = LoadLibrary(pluginPath.c_str());
+		plugin.handle = LoadLibraryExA(pluginPath.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 		if(plugin.handle)
 		{
 			plugin.query = (_NVSEPlugin_Query)GetProcAddress(plugin.handle, "NVSEPlugin_Query");
@@ -612,12 +631,15 @@ bool PluginManager::InstallPlugins(const std::vector<std::string>& pluginPaths)
 				pluginStatus.loadStatus = SafeCallQueryPlugin(&plugin, &g_NVSEInterface);
 				if (pluginStatus.loadStatus.empty())
 					pluginStatus.querySuccess = true;
+				else
+					UnregisterListener(s_currentPluginHandle);
 				continue;
 			}
 			pluginStatus.loadStatus = "was not loaded as it does not appear to be an NVSE plugin (NVSE plugins must export NVSEPlugin_Query and NVSEPlugin_Load)";
 			continue;
 		}
 		pluginStatus.loadStatus = FormatString("couldn't be loaded due to an error (win32 error code: %d message: \"%s\")", GetLastError(), GetLastErrorAsString().c_str());
+		UnregisterListener(s_currentPluginHandle);
 	}
 
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_PostQueryPlugins, NULL, 0, NULL);
@@ -671,6 +693,11 @@ void PluginManager::InstallPlugins(void)
 		std::string	pluginPath = iter.GetFullPath();
 		pluginPaths.push_back(std::move(pluginPath));
 	}
+
+	std::sort(pluginPaths.begin(), pluginPaths.end(),
+		[](const std::string& a, const std::string& b) -> bool {
+			return _stricmp(a.c_str(), b.c_str()) < 0;
+		});
 
 	InstallPlugins(pluginPaths);
 	
@@ -822,7 +849,7 @@ bool PluginManager::RegisterListener(PluginHandle listener, const char* sender, 
 	_MESSAGE("registering plugin listener for %s at %u of %u", sender, listener, numPlugins);
 
 	// handle > num plugins = invalid
-	if (listener > g_pluginManager.GetNumPlugins() || !handler) 
+	if (s_currentPluginHandle != listener && listener > g_pluginManager.GetNumPlugins())
 	{
 		return false;
 	}
@@ -887,28 +914,42 @@ bool PluginManager::RegisterListener(PluginHandle listener, const char* sender, 
 	return true;
 }
 
-bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver)
+void PluginManager::UnregisterListener(PluginHandle listener) {
+
+	_MESSAGE("unregistering plugin listener at %u", listener);
+
+	for (auto& senderListeners : s_pluginListeners) {
+		senderListeners.erase(
+			std::remove_if(senderListeners.begin(), senderListeners.end(),
+				[listener](const PluginListener& pl) { return pl.listener == listener; }),
+			senderListeners.end());
+	}
+	s_pluginListeners.shrink_to_fit();
+}
+
+bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, void * data, UInt32 dataLen, const char* receiver) noexcept
 {
 #ifdef RUNTIME
 	//_DMESSAGE("dispatch message to event handlers");
-	EventManager::HandleNVSEMessage(messageType, data);
+	if (sender == 0)
+		EventManager::HandleNVSEMessage(messageType, data);
 #endif
 	//_DMESSAGE("dispatch message to plugin listeners");
-	UInt32 numRespondents = 0;
+	bool sentMessages = false;
 	PluginHandle target = kPluginHandle_Invalid;
 
-	if (!s_pluginListeners.size())	// no listeners yet registered
+	if (!s_pluginListeners.size()) [[unlikely]]	// no listeners yet registered
 	{
 	    _DMESSAGE("no listeners registered");
 		return false;
 	}
-	else if (sender >= s_pluginListeners.size())
+	else if (sender >= s_pluginListeners.size()) [[unlikely]]
 	{
 	    _DMESSAGE("sender is not in the list");
 		return false;
 	}
 
-	if (receiver)
+	if (receiver) [[unlikely]]
 	{
 		target = g_pluginManager.LookupHandleFromName(receiver);
 		if (target == kPluginHandle_Invalid)
@@ -916,18 +957,18 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 	}
 
 	const char* senderName = g_pluginManager.GetPluginNameFromHandle(sender);
-	if (!senderName)
+	if (!senderName) [[unlikely]]
 		return false;
 
 	for (auto iter = s_pluginListeners[sender].begin(); iter != s_pluginListeners[sender].end(); ++iter)
 	{
-		NVSEMessagingInterface::Message msg{};
+		NVSEMessagingInterface::Message msg;
 		msg.data = data;
 		msg.type = messageType;
 		msg.sender = senderName;
 		msg.dataLen = dataLen;
 
-		if (target != kPluginHandle_Invalid)	// sending message to specific plugin
+		if (target != kPluginHandle_Invalid) [[unlikely]]	// sending message to specific plugin
 		{
 			if (iter->listener == target)
 			{
@@ -935,15 +976,15 @@ bool PluginManager::Dispatch_Message(PluginHandle sender, UInt32 messageType, vo
 				return true;
 			}
 		}
-		else
+		else [[likely]]
 		{
 		    //_DMESSAGE("sending %u to %u", messageType, iter->listener);
 			iter->handleMessage(&msg);
-			numRespondents++;
+			sentMessages = true;;
 		}
 	}
 	//_DMESSAGE("dispatched message.");
-	return numRespondents ? true : false;
+	return sentMessages;
 }
 
 PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
@@ -969,7 +1010,7 @@ PluginHandle PluginManager::LookupHandleFromName(const char* pluginName)
 PluginHandle PluginManager::LookupHandleFromPath(const char* pluginPath)
 {
 	if (!pluginPath || !*pluginPath)
-		return 0;
+		return kPluginHandle_Invalid;
 
 	UInt32	idx = 1;
 
@@ -1028,6 +1069,11 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_IsScriptLambda: result = (void*)&LambdaManager::IsScriptLambda; break;
 	case NVSEDataInterface::kNVSEData_HasScriptCommand: result = (void*)&ScriptParsing::ScriptContainsCommand; break;
 	case NVSEDataInterface::kNVSEData_DecompileScript: result = (void*)&ScriptParsing::PluginDecompileScript; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataGet: result = (void*)&FormExtraData::Get; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataGetAll: result = (void*)&FormExtraData::GetAll; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
+	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
 	}
 	return result;
 }
@@ -1085,6 +1131,29 @@ bool Cmd_GetPluginVersion_Execute(COMMAND_ARGS)
 	return true;
 }
 
+bool Cmd_ReloadPluginConfig_Execute(COMMAND_ARGS)
+{
+	char	pluginName[256];
+
+	*result = 0;
+
+	if(!ExtractArgs(EXTRACT_ARGS, &pluginName)) return true;
+
+	PluginInfo	* info = g_pluginManager.GetInfoByName(pluginName);
+
+	if(!info)
+	{
+		Console_Print("ReloadPluginConfig: plugin '%s' not found", pluginName);
+		return true;
+	}
+
+	PluginManager::Dispatch_Message(0, NVSEMessagingInterface::kMessage_ReloadConfig,
+		(void*)pluginName, strlen(pluginName) + 1, pluginName);
+
+	*result = 1;
+	return true;
+}
+
 #endif
 
 CommandInfo kCommandInfo_IsPluginInstalled =
@@ -1114,6 +1183,22 @@ CommandInfo kCommandInfo_GetPluginVersion =
 	kParams_OneString,
 
 	HANDLER(Cmd_GetPluginVersion_Execute),
+	Cmd_Default_Parse,
+	NULL,
+	NULL
+};
+
+CommandInfo kCommandInfo_ReloadPluginConfig =
+{
+	"ReloadPluginConfig",
+	"",
+	0,
+	"sends kMessage_ReloadConfig to the specified plugin",
+	0,
+	1,
+	kParams_OneString,
+
+	HANDLER(Cmd_ReloadPluginConfig_Execute),
 	Cmd_Default_Parse,
 	NULL,
 	NULL
