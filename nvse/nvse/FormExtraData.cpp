@@ -7,7 +7,11 @@ namespace
 {
 	std::unordered_map<TESForm*, std::vector<NiPointer<FormExtraData>>> g_formExtraDataMap;
 	std::shared_mutex g_formExtraDataCS;
+#if RUNTIME
 	UInt32 g_removeFromAllFormMapsAddr = 0x483C70;
+#else
+	UInt32 g_removeFromAllFormMapsAddr = 0x4FB910;
+#endif
 }
 
 bool FormExtraData::Add(TESForm* form, FormExtraData* formExtraData)
@@ -128,5 +132,9 @@ bool __fastcall RemoveFromAllFormsMapHook(TESForm* form)
 
 void FormExtraData::WriteHooks()
 {
+#if RUNTIME
 	WriteRelCall(0x483669, &RemoveFromAllFormsMapHook, &g_removeFromAllFormMapsAddr);
+#else
+	WriteRelCall(0x4FD0C7, &RemoveFromAllFormsMapHook, &g_removeFromAllFormMapsAddr);
+#endif
 }

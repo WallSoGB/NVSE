@@ -6,6 +6,8 @@
 #if RUNTIME
 #include "GameAPI.h"
 #include "InventoryRef.h"
+#else
+#include "NiTypes.h"
 #endif
 
 struct CommandInfo;
@@ -620,7 +622,6 @@ struct NVSEScriptInterface
 
 #endif
 
-#if RUNTIME
 
 // Gives access to internal data without reverse engineering NVSE
 struct NVSEDataInterface
@@ -638,7 +639,7 @@ struct NVSEDataInterface
 
 		kNVSEData_SingletonMax,
 	};
-	void * (* GetSingleton)(UInt32 singletonID);
+	void * (* GetSingleton)(UInt32 singletonID); // Game only
 	enum  {
 		kNVSEData_InventoryReferenceCreate = 1,
 		kNVSEData_InventoryReferenceGetForRefID,
@@ -659,6 +660,8 @@ struct NVSEDataInterface
 		kNVSEData_IsScriptLambda,
 		kNVSEData_HasScriptCommand,
 		kNVSEData_DecompileScript,
+
+		// Available in GECK
 		kNVSEData_FormExtraDataGet,
 		kNVSEData_FormExtraDataGetAll,
 		kNVSEData_FormExtraDataAdd,
@@ -673,9 +676,9 @@ struct NVSEDataInterface
 
 		kNVSEData_DataMax,
 	};
-	void * (* GetData)(UInt32 dataID);
+	void * (* GetData)(UInt32 dataID); // Game only
 	// v2: xNVSE caches script data for additional performance and short circuit evaluation, if you are manipulating script data then you can clear the cache 
-	void (*ClearScriptDataCache)();
+	void (*ClearScriptDataCache)();  // Game only
 	// v3
 
 };
@@ -772,6 +775,8 @@ public:
 		return getAll(form, outData);
 	}
 };
+
+#if RUNTIME
 
 //== Type definitions of function pointers, to easily cast the functions returned by NVSEDataInterface::GetFunc
 
