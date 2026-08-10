@@ -148,12 +148,13 @@ Script::VariableType GetDeclaredVariableType(const char* varName, const char* sc
 
 Script *GetScriptFromForm(TESForm *form)
 {
-	TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-	if (refr)
-		form = refr->baseForm;
+	if (!form)
+		return nullptr;
 
-	TESScriptableForm *scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
-	return scriptable ? scriptable->script : NULL;
+	if (form->IsReference())
+		form = static_cast<TESObjectREFR*>(form)->baseForm;
+
+	return TESScriptableForm::GetFormScript(form);
 }
 
 bool GetUserFunctionParamTokensFromLine(std::string_view lineText, std::vector<std::string>& out)
@@ -406,7 +407,7 @@ Script::RefVariable *ScriptBuffer::ResolveRef(const char *refName, Script *scrip
 		}
 		if (form)
 		{
-			TESObjectREFR *refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+			TESObjectREFR *refr = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 			if (refr && !refr->IsPersistent()) // only persistent refs can be used in scripts
 				return NULL;
 			if (!newRef)
@@ -456,8 +457,10 @@ Script::VariableType ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script
 			{
 			case kFormType_TESObjectREFR:
 			{
-				TESObjectREFR *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
-				scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
+				if (refVar->form) {
+					TESObjectREFR *refr = refVar->form->IsReference() ? static_cast<TESObjectREFR *>(refVar->form) : nullptr;
+					scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
+				}
 				break;
 			}
 			case kFormType_TESQuest:
@@ -571,8 +574,8 @@ Script* Script::RefVariable::GetReferencedScript() const
 		return nullptr;
 	if (IS_ID(form, TESQuest))
 		return static_cast<TESQuest*>(form)->scriptable.script;
-	if (auto* refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR))
-		if (auto* extraScript = refr->GetExtraScript())
+	if (form->IsReference())
+		if (auto* extraScript = static_cast<TESObjectREFR*>(form)->GetExtraScript())
 			return extraScript->script;
 	return nullptr;
 }

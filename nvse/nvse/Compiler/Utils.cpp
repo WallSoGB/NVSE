@@ -455,7 +455,7 @@ namespace Compiler {
 				}
 				break;
 			case kParamType_ObjectRef:
-				if (!form || !DYNAMIC_CAST(form, TESForm, TESObjectREFR)) {
+				if (!form || !form->IsReference()) {
 					return false;
 				}
 				break;
@@ -477,7 +477,7 @@ namespace Compiler {
 				}
 				break;
 			case kParamType_Container:
-				if (!form || !DYNAMIC_CAST(form, TESForm, TESObjectREFR) || !
+				if (!form || !form->IsReference() || !
 					ThisStdCall<TESContainer*>(g_isContainer, form)) {
 					return false;
 				}
@@ -496,7 +496,7 @@ namespace Compiler {
 				}
 				break;
 			case kParamType_MagicItem:
-				if (!form || !DYNAMIC_CAST(form, TESForm, MagicItem)) {
+				if (!form || !form->IsMagicItem()) {
 					return false;
 				}
 				break;
@@ -544,7 +544,7 @@ namespace Compiler {
 				}
 				break;
 			case kParamType_TESObject:
-				if (!form || !DYNAMIC_CAST(form, TESForm, TESObject)) {
+				if (!form || !form->IsObject()) {
 					return false;
 				}
 				break;

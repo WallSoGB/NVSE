@@ -3410,7 +3410,9 @@ public:
 };
 
 // TESLevItem (44)
-class TESLevItem;
+class TESLevItem : public TESBoundObject, public TESLeveledList {
+};
+
 class TESImageSpaceModifier;
 
 // 2F4

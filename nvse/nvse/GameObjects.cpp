@@ -34,7 +34,7 @@ ExtraScript* TESObjectREFR::GetExtraScript() const
 	BSExtraData* xData = extraDataList.GetByType(kExtraData_Script);
 	if (xData)
 	{
-		const auto xScript = DYNAMIC_CAST(xData, BSExtraData, ExtraScript);
+		const auto xScript = static_cast<ExtraScript*>(xData);
 		if (xScript)
 			return xScript;
 	}
@@ -199,7 +199,7 @@ TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find 
 	TESForm *baseForm = thisObj->baseForm;
 	if (baseForm && (baseForm->GetModIndex() == 0xFF))
 	{
-		if (BGSPlaceableWater *plcWater = DYNAMIC_CAST(baseForm, TESForm, BGSPlaceableWater))
+		if (BGSPlaceableWater *plcWater = GET_FORM_AS(baseForm, BGSPlaceableWater))
 			return plcWater->water;
 		if (ExtraLeveledCreature *pXCreatureData = GetByTypeCast(thisObj->extraDataList, LeveledCreature); pXCreatureData && pXCreatureData->baseForm)
 			return pXCreatureData->baseForm;

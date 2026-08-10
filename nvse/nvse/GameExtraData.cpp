@@ -786,9 +786,9 @@ class TESScriptableForm;
 ExtraScript* ExtraScript::Create(TESForm* baseForm, bool create, TESObjectREFR* container) {
 	ExtraScript* xScript = (ExtraScript*)BSExtraData::Create(kExtraData_Script, sizeof(ExtraScript), s_ExtraScriptVtbl);
 	if (xScript && baseForm) {
-		TESScriptableForm* pScript = DYNAMIC_CAST(baseForm, TESForm, TESScriptableForm);
-		if (pScript && pScript->script) {
-			xScript->script = pScript->script;
+		Script* pScript = TESScriptableForm::GetFormScript(baseForm);
+		if (pScript) {
+			xScript->script = pScript;
 			if (create) {
 				xScript->eventList = xScript->script->CreateEventList();
 				if (container)

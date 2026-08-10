@@ -346,7 +346,7 @@ std::unique_ptr<ScriptToken> ScriptToken::Create(ForEachContext *forEach)
 	else if (forEach->iterVar.type == Script::eVarType_Ref)
 	{
 		auto const form = (TESForm *)forEach->sourceID;
-		auto const target = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+		auto const target = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 		if (!target && NOT_ID(form, BGSListForm))
 			return nullptr;
 	}
@@ -666,11 +666,11 @@ std::string ScriptToken::GetVariableName(Script* script) const
 	{
 		// reference.variable
 		auto *refVar = script->GetRefFromRefList(refIdx);
-		if (!refVar)
+		if (!refVar || !refVar->form)
 		{
 			return "";
 		}
-		auto *refr = DYNAMIC_CAST(refVar->form, TESForm, TESObjectREFR);
+		auto *refr = refVar->form->IsReference() ? static_cast<TESObjectREFR *>(refVar->form) : nullptr;
 		if (refr)
 		{
 			auto *extraScript = refr->GetExtraScript();
@@ -686,7 +686,7 @@ std::string ScriptToken::GetVariableName(Script* script) const
 		}
 		else
 		{
-			auto *quest = DYNAMIC_CAST(refVar->form, TESForm, TESQuest);
+			auto *quest = GET_FORM_AS(refVar->form, TESQuest);
 			if (quest)
 			{
 				auto *refScript = quest->scriptable.script;
@@ -1379,12 +1379,15 @@ Token_Type ScriptToken::ReadFrom(ExpressionEvaluator *context)
 			break;
 		}
 		refVar->Resolve(context->eventList);
-		value.global = DYNAMIC_CAST(refVar->form, TESForm, TESGlobal);
-		if (!value.global)
-		{
-			context->Error("Failed to resolve global");
-			type = kTokenType_Invalid; 
-			break;
+
+		if (refVar->form) {
+			value.global = GET_FORM_AS(refVar->form, TESGlobal);
+			if (!value.global)
+			{
+				context->Error("Failed to resolve global");
+				type = kTokenType_Invalid; 
+				break;
+			}
 		}
 
 		break;

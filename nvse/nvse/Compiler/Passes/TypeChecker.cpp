@@ -694,7 +694,7 @@ namespace Compiler::Passes {
 			const auto ident = dynamic_cast<Expressions::IdentExpr*>(callee.get());
 			if (ident) {
 				if (const auto form = GetFormByID(ident->str.c_str())) {
-					if (const auto pScript = DYNAMIC_CAST(form, TESForm, Script)) {
+					if (const auto pScript = GET_FORM_AS(form, Script)) {
 						if (pScript->Type() != Script::eType_Object) {
 							WRAP_ERROR(
 								error(ident, std::format("Target script is not an object script (Invalid UDF)"));
@@ -750,8 +750,9 @@ namespace Compiler::Passes {
 		const TESScriptableForm* scriptable = nullptr;
 		switch (form->typeID) {
 			case kFormType_TESObjectREFR: {
-				const auto pRef = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
-				scriptable = DYNAMIC_CAST(pRef->baseForm, TESForm, TESScriptableForm);
+				const auto pRef = form->IsReference() ? static_cast<TESObjectREFR*>(form) : nullptr;
+				if (pRef)
+					scriptable = DYNAMIC_CAST(pRef->baseForm, TESForm, TESScriptableForm);
 				break;
 			}
 			case kFormType_TESQuest: {

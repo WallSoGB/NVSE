@@ -1253,7 +1253,8 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 		{
 			if (form->refID == playerID)
 				form = PlayerCharacter::GetSingleton();
-			else form = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+			else 
+				form = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 		}
 		if (form)
 		{
@@ -2358,7 +2359,7 @@ bool ExpressionParser::ParseUserFunctionCall()
 
 	TESForm* form;
 	Script* funcScript{};
-	if (funcForm && (form = funcForm->GetTESForm()) && (funcScript = DYNAMIC_CAST(form, TESForm, Script)))
+	if (funcForm && (form = funcForm->GetTESForm()) && (funcScript = GET_FORM_AS(form, Script)))
 	{
 		// Script editor ID or lambda
 		auto* savedLenPtr = reinterpret_cast<UInt16*>(m_lineBuf->dataBuf + m_lineBuf->dataOffset);
@@ -4363,7 +4364,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				case kParamType_ObjectRef:
 				case kParamType_MapMarker:
 				{
-					auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+					auto refr = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 					if (refr)
 					{
 						// kParamType_MapMarker must be a mapmarker refr
@@ -4383,7 +4384,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_Actor:
 				{
-					auto actor = DYNAMIC_CAST(form, TESForm, Actor);
+					auto actor = form->IsActor() ? static_cast<Actor *>(form) : nullptr;
 					if (actor)
 					{
 						Actor **out = va_arg(varArgs, Actor **);
@@ -4411,7 +4412,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_Cell:
 				{
-					auto cell = DYNAMIC_CAST(form, TESForm, TESObjectCELL);
+					auto cell = GET_FORM_AS(form, TESObjectCELL);
 					if (cell)
 					{
 						TESObjectCELL **out = va_arg(varArgs, TESObjectCELL **);
@@ -4439,7 +4440,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_TESObject:
 				{
-					auto object = DYNAMIC_CAST(form, TESForm, TESObject);
+					auto object = form->IsObject() ? static_cast<TESObject *>(form) : nullptr;
 					if (object)
 					{
 						TESObject **out = va_arg(varArgs, TESObject **);
@@ -4453,7 +4454,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_ActorBase:
 				{
-					auto base = DYNAMIC_CAST(form, TESForm, TESActorBase);
+					auto base = form->IsActorBase() ? static_cast<TESActorBase *>(form) : nullptr;
 					if (base)
 					{
 						TESActorBase **out = va_arg(varArgs, TESActorBase **);
@@ -4467,7 +4468,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_Container:
 				{
-					auto refr = DYNAMIC_CAST(form, TESForm, TESObjectREFR);
+					auto refr = form->IsReference() ? static_cast<TESObjectREFR *>(form) : nullptr;
 					if (refr && refr->GetContainer())
 					{
 						TESObjectREFR **out = va_arg(varArgs, TESObjectREFR **);
@@ -4481,7 +4482,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_WorldSpace:
 				{
-					auto space = DYNAMIC_CAST(form, TESForm, TESWorldSpace);
+					auto space = GET_FORM_AS(form, TESWorldSpace);
 					if (space)
 					{
 						TESWorldSpace **out = va_arg(varArgs, TESWorldSpace **);
@@ -4495,7 +4496,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_AIPackage:
 				{
-					auto pack = DYNAMIC_CAST(form, TESForm, TESPackage);
+					auto pack = GET_FORM_AS(form, TESPackage);
 					if (pack)
 					{
 						TESPackage **out = va_arg(varArgs, TESPackage **);
@@ -4509,7 +4510,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_CombatStyle:
 				{
-					auto style = DYNAMIC_CAST(form, TESForm, TESCombatStyle);
+					auto style = GET_FORM_AS(form, TESCombatStyle);
 					if (style)
 					{
 						TESCombatStyle **out = va_arg(varArgs, TESCombatStyle **);
@@ -4523,7 +4524,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_LeveledOrBaseChar:
 				{
-					auto NPC = DYNAMIC_CAST(form, TESForm, TESNPC);
+					auto NPC = GET_FORM_AS(form, TESNPC);
 					if (NPC)
 					{
 						TESForm **out = va_arg(varArgs, TESForm **);
@@ -4531,7 +4532,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 					}
 					else
 					{
-						auto lev = DYNAMIC_CAST(form, TESForm, TESLevCharacter);
+						auto lev = GET_FORM_AS(form, TESLevCharacter);
 						if (lev)
 						{
 							TESForm **out = va_arg(varArgs, TESForm **);
@@ -4546,7 +4547,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 				break;
 				case kParamType_LeveledOrBaseCreature:
 				{
-					auto crea = DYNAMIC_CAST(form, TESForm, TESCreature);
+					auto crea = GET_FORM_AS(form, TESCreature);
 					if (crea)
 					{
 						TESForm **out = va_arg(varArgs, TESForm **);
@@ -4554,7 +4555,7 @@ bool ExpressionEvaluator::ConvertDefaultArg(ScriptToken *arg, ParamInfo *info, b
 					}
 					else
 					{
-						auto lev = DYNAMIC_CAST(form, TESForm, TESLevCreature);
+						auto lev = GET_FORM_AS(form, TESLevCreature);
 						if (lev)
 						{
 							TESForm **out = va_arg(varArgs, TESForm **);
@@ -4755,7 +4756,7 @@ std::unique_ptr<ScriptToken> ExpressionEvaluator::ExecuteCommandToken(ScriptToke
 				Error("Attempting to call a function on a NULL reference");
 				return nullptr;
 			}
-			callingObj = DYNAMIC_CAST(callingRef->form, TESForm, TESObjectREFR);
+			callingObj = callingRef->form->IsReference() ? static_cast<TESObjectREFR *>(callingRef->form) : nullptr;
 			if (!callingObj)
 			{
 				Error("Attempting to call a function on a base object (this must be a reference)");
