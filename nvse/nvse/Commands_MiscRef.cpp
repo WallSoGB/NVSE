@@ -378,7 +378,7 @@ struct DistanceAngleMatcher
 #if _DEBUG
 			// test if GetHeadingAngle has same result as Cmd_GetHeadingAngle
 			// Cmd_GetHeadingAngle only works on actor calling refs, so only enable the test for that case.
-			if (s_AreRuntimeTestsEnabled && m_distanceRef->Unk_3F())
+			if (s_AreRuntimeTestsEnabled && m_distanceRef->IsMobileObject())
 			{
 				double cmdResult;
 				CdeclCall(0x5A0410, m_distanceRef, refr, 0, &cmdResult); // call Cmd_GetHeadingAngle
