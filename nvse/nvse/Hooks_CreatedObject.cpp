@@ -93,28 +93,6 @@ UInt32 FakeModInfo::SetStaticFieldsAndGetFormTypeEnum(UInt32 aChunkType) {
 
 void SaveCreatedObjects(NVSESerializationInterface* nvse)
 {
-	TESSaveLoadGame* game = TESSaveLoadGame::Get();
-	for (TESSaveLoadGame::CreatedObject* crobj = &game->createdObjectList; crobj; crobj = crobj->next)
-	{
-		if (crobj && crobj->refID)
-			if ((crobj->refID & 0xFF000000) == 0xFF000000)
-			{
-				TESForm* form = LookupFormByID(crobj->refID);
-				if (!form)
-				{
-					_MESSAGE("SAVE: Unkown Object %08x found in created base object list", crobj->refID);
-					continue;
-				}
-				else
-				{
-					form->SaveForm();
-					nvse->OpenRecord('CROB', 0);
-					nvse->WriteRecordData(*g_CreatedObjectData, *g_CreatedObjectSize);
-				}
-			}
-			else
-				_MESSAGE("Save: Non-created object or garbage refID %08x found in created base object list.", crobj->refID);
-	}
 }
 
 void fakeModInfo_GetNextChunk(void) {
