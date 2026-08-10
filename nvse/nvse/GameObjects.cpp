@@ -63,11 +63,7 @@ QuestObjectiveTargets* PlayerCharacter::GetCurrentQuestObjectiveTargets()
 
 TESContainer* TESObjectREFR::GetContainer()
 {
-	if (IsActor())
-		return &((TESActorBase*)baseForm)->container;
-	if (baseForm->typeID == kFormType_TESObjectCONT)
-		return &((TESObjectCONT*)baseForm)->container;
-	return NULL;
+	return HasContainer();
 }
 
 bool TESObjectREFR::IsMapMarker()
