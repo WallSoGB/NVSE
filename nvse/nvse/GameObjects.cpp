@@ -197,7 +197,7 @@ TESForm* GetPermanentBaseForm(TESObjectREFR* thisObj)	// For LevelledForm, find 
 	{
 		if (BGSPlaceableWater *plcWater = GET_FORM_AS(baseForm, BGSPlaceableWater))
 			return plcWater->water;
-		if (ExtraLeveledCreature *pXCreatureData = GetByTypeCast(thisObj->extraDataList, LeveledCreature); pXCreatureData && pXCreatureData->baseForm)
+		if (ExtraLeveledCreature *pXCreatureData = GetExtraByType(thisObj->extraDataList, LeveledCreature); pXCreatureData && pXCreatureData->baseForm)
 			return pXCreatureData->baseForm;
 	}
 	return baseForm;

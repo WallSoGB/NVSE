@@ -1773,7 +1773,7 @@ public:
 		//check if it looks like a hotkey
 		if (!entryData->extendData || !entryData->extendData->Head())
 			return false;
-		ExtraHotkey* qKey = GetByTypeCast(entryData->extendData, ExtraHotkey)
+		ExtraHotkey* qKey = GetExtraByType(entryData->extendData, ExtraHotkey)
 		if (!qKey)
 			return false;
 
@@ -1791,7 +1791,7 @@ static void _ClearHotKey ( UInt32 whichKey ) {
 		return;
 
 	//remove ExtraQuickKey from container changes
-	ExtraContainerChanges* xChanges = GetByTypeCast(PlayerCharacter::GetSingleton()->extraDataList, kExtraData_ContainerChanges);
+	ExtraContainerChanges* xChanges = GetExtraByType(PlayerCharacter::GetSingleton()->extraDataList, kExtraData_ContainerChanges);
 	if (xChanges)
 	{
 		ExtraQuickKeyFinder finder(whichKey);

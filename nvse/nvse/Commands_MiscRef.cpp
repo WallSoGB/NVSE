@@ -58,7 +58,7 @@ bool Cmd_GetLinkedDoor_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return true;
 
-	ExtraTeleport* xTele = GetByTypeCast(thisObj->extraDataList, Teleport);
+	ExtraTeleport* xTele = GetExtraByType(thisObj->extraDataList, Teleport);
 	if (xTele)
 		*refResult = xTele->data->linkedDoor->refID;
 
@@ -73,7 +73,7 @@ bool Cmd_GetTeleportCell_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return true;
 
-	ExtraTeleport* xTele = GetByTypeCast(thisObj->extraDataList, Teleport);
+	ExtraTeleport* xTele = GetExtraByType(thisObj->extraDataList, Teleport);
 	// parentCell will be null if linked door's cell is not currently loaded (e.g. most exterior cells)
 	if (xTele && xTele->data && xTele->data->linkedDoor && xTele->data->linkedDoor->parentCell) {
 		*refResult = xTele->data->linkedDoor->parentCell->refID;
@@ -89,7 +89,7 @@ bool Cmd_IsLoadDoor_Execute(COMMAND_ARGS)
 	if (!thisObj)
 		return true;
 
-	if (GetByTypeCast(thisObj->extraDataList, Teleport) || GetByTypeCast(thisObj->extraDataList, RandomTeleportMarker))
+	if (GetExtraByType(thisObj->extraDataList, Teleport) || GetExtraByType(thisObj->extraDataList, RandomTeleportMarker))
 		*result = 1;
 
 	return true;
@@ -112,7 +112,7 @@ bool GetTeleportInfo(COMMAND_ARGS, UInt32 which)
 	if (!thisObj || thisObj->baseForm->typeID != kFormType_TESObjectDOOR)
 		return true;
 
-	ExtraTeleport* tele = GetByTypeCast(thisObj->extraDataList, Teleport);
+	ExtraTeleport* tele = GetExtraByType(thisObj->extraDataList, Teleport);
 	if (tele && tele->data)
 	{
 		switch (which)
@@ -169,12 +169,12 @@ bool Cmd_SetDoorTeleport_Execute(COMMAND_ARGS)
 	float z = 999;
 	float rot = 999;
 
-	if (GetByTypeCast(thisObj->extraDataList, RandomTeleportMarker))
+	if (GetExtraByType(thisObj->extraDataList, RandomTeleportMarker))
 		return true;
 
 	if (ExtractArgs(EXTRACT_ARGS, &linkedDoor, &x, &y, &z, &rot) && linkedDoor && linkedDoor->IsPersistent())	// ###TODO: necessary for linkedref to be door?
 	{
-		ExtraTeleport* tele = GetByTypeCast(thisObj->extraDataList, Teleport);
+		ExtraTeleport* tele = GetExtraByType(thisObj->extraDataList, Teleport);
 		if (!tele)
 		{
 			tele = ExtraTeleport::Create();
@@ -226,7 +226,7 @@ bool Cmd_GetParentWorldspace_Execute(COMMAND_ARGS)
 
 	if(!thisObj) return true;
 
-	ExtraPersistentCell* xPersistentCell = (ExtraPersistentCell*)GetByTypeCast(thisObj->extraDataList, PersistentCell);
+	ExtraPersistentCell* xPersistentCell = (ExtraPersistentCell*)GetExtraByType(thisObj->extraDataList, PersistentCell);
 	if (xPersistentCell && xPersistentCell->persistentCell && xPersistentCell->persistentCell->worldSpace)
 		*refResult = xPersistentCell->persistentCell->worldSpace->refID;
 	else
@@ -975,7 +975,7 @@ bool Cmd_GetOpenKey_Execute(COMMAND_ARGS)
 
 	if (!thisObj)	return true;
 	
-	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
+	ExtraLock* xLock = GetExtraByType(thisObj->extraDataList, Lock);
 	if (xLock && xLock->data && xLock->data->key)
 		*refResult = xLock->data->key->refID;
 
@@ -1002,7 +1002,7 @@ bool Cmd_SetOpenKey_Execute(COMMAND_ARGS)
 	if (!key)	
 		return true;
 
-	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
+	ExtraLock* xLock = GetExtraByType(thisObj->extraDataList, Lock);
 	if (!xLock) {
 		xLock = ExtraLock::Create();
 		thisObj->extraDataList.Add(xLock);
@@ -1024,7 +1024,7 @@ bool Cmd_ClearOpenKey_Execute(COMMAND_ARGS)
 	if (!thisObj)	
 		return true;
 
-	ExtraLock* xLock = GetByTypeCast(thisObj->extraDataList, Lock);
+	ExtraLock* xLock = GetExtraByType(thisObj->extraDataList, Lock);
 	if (xLock)
 	{
 		thisObj->extraDataList.Remove(xLock, true);
@@ -1037,7 +1037,7 @@ bool Cmd_ClearOpenKey_Execute(COMMAND_ARGS)
 static TESForm* GetOwner(BaseExtraList& xDataList)
 {
 	TESForm* owner = NULL;
-	ExtraOwnership* xOwner = GetByTypeCast(xDataList, Ownership);
+	ExtraOwnership* xOwner = GetExtraByType(xDataList, Ownership);
 	if (xOwner)
 		owner = xOwner->owner;
 
@@ -1046,7 +1046,7 @@ static TESForm* GetOwner(BaseExtraList& xDataList)
 
 static UInt32 GetOwningFactionRequiredRank(BaseExtraList& xDataList)
 {
-	ExtraRank * xRank = GetByTypeCast(xDataList, Rank);
+	ExtraRank * xRank = GetExtraByType(xDataList, Rank);
 	if(xRank)
 		return xRank->rank;
 
