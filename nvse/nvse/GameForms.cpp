@@ -112,10 +112,10 @@ TESForm *TESForm::CloneForm(bool persist) const
 	{
 		result->CopyFrom(this);
 		// it looks like some fields are not copied, case in point: TESObjectCONT does not copy BoundObject information.
-		TESBoundObject *boundObject = DYNAMIC_CAST(result, TESForm, TESBoundObject);
-		if (boundObject)
+		if (result->IsBoundObject() && IsBoundObject())
 		{
-			TESBoundObject *boundSource = DYNAMIC_CAST(this, TESForm, TESBoundObject);
+			TESBoundObject *boundObject = static_cast<TESBoundObject *>(result);
+			const TESBoundObject *boundSource = static_cast<const TESBoundObject *>(this);
 			if (boundSource)
 			{
 				for (UInt8 i = 0; i < 6; i++)

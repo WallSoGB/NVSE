@@ -183,7 +183,7 @@ bool Cmd_SetWeight_Execute(COMMAND_ARGS)
 		if (pWeightForm) {
 			pWeightForm->weight = floatVal;
 		} else {
-			TESAmmo* pAmmo = DYNAMIC_CAST(pForm, TESForm, TESAmmo);
+			TESAmmo* pAmmo = GET_FORM_AS(pForm, TESAmmo);
 			if (pAmmo) {
 				pAmmo->weight = floatVal;
 			}
@@ -221,7 +221,7 @@ bool Cmd_SetHealth_Execute(COMMAND_ARGS)
 			pForm = thisObj->baseForm;
 		}
 
-		TESHealthForm* pHealth = DYNAMIC_CAST(pForm, TESForm, TESHealthForm);
+		TESHealthForm* pHealth = TESHealthForm::GetFormAsHealthForm(pForm);
 		if (pHealth) {
 			pHealth->health = health;
 		}

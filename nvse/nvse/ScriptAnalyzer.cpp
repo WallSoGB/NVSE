@@ -406,7 +406,7 @@ std::string ScriptParsing::RefToken::ToString()
 }
 
 ScriptParsing::GlobalVariableToken::GlobalVariableToken(Script::RefVariable* refVariableParam): RefToken(nullptr, refVariableParam),
-                                                                                           global(DYNAMIC_CAST(refVariableParam ? refVariableParam->form : nullptr, TESForm, TESGlobal))
+                                                                                           global(refVariableParam && refVariableParam->form ? GET_FORM_AS(refVariableParam->form, TESGlobal) : nullptr)
 {
 	if (!global)
 		error = true;
