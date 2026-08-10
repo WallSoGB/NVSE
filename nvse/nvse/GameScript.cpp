@@ -452,30 +452,30 @@ Script::VariableType ScriptBuffer::GetVariableType(VariableInfo* varInfo, Script
 	{
 		if (refVar->form)
 		{
-			TESScriptableForm *scriptable = NULL;
+			Script* pFormScript = NULL;
 			switch (refVar->form->typeID)
 			{
 			case kFormType_TESObjectREFR:
 			{
-				if (refVar->form) {
-					TESObjectREFR *refr = refVar->form->IsReference() ? static_cast<TESObjectREFR *>(refVar->form) : nullptr;
-					scriptable = DYNAMIC_CAST(refr->baseForm, TESForm, TESScriptableForm);
+				if (refVar->form->IsReference()) {
+					TESObjectREFR* refr = static_cast<TESObjectREFR *>(refVar->form);
+					pFormScript = TESScriptableForm::GetFormScript(refr->baseForm);
 				}
 				break;
 			}
 			case kFormType_TESQuest:
-				scriptable = DYNAMIC_CAST(refVar->form, TESForm, TESScriptableForm);
+				pFormScript = TESScriptableForm::GetFormScript(refVar->form);
 			}
 
-			if (scriptable && scriptable->script)
+			if (pFormScript)
 			{
-				if (scriptable->script->text)
+				if (pFormScript->text)
 				{
-					script = scriptable->script;
-					scrText = scriptable->script->text;
+					script = pFormScript;
+					scrText = pFormScript->text;
 				}
 				else
-					return scriptable->script->GetVariableType(varInfo);
+					return pFormScript->GetVariableType(varInfo);
 			}
 		}
 		else // this is a ref variable, not a literal form - can't look up script vars

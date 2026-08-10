@@ -747,16 +747,15 @@ namespace Compiler::Passes {
 		const auto& lhsName = ident->str;
 		const auto& rhsName = expr->identifier->str;
 
-		const TESScriptableForm* scriptable = nullptr;
+		Script* pFormScript = nullptr;
 		switch (form->typeID) {
 			case kFormType_TESObjectREFR: {
-				const auto pRef = form->IsReference() ? static_cast<TESObjectREFR*>(form) : nullptr;
-				if (pRef)
-					scriptable = DYNAMIC_CAST(pRef->baseForm, TESForm, TESScriptableForm);
+				if (form->IsReference())
+					pFormScript = TESScriptableForm::GetFormScript(static_cast<TESObjectREFR*>(form)->baseForm);
 				break;
 			}
 			case kFormType_TESQuest: {
-				scriptable = DYNAMIC_CAST(form, TESForm, TESScriptableForm);
+				pFormScript = TESScriptableForm::GetFormScript(form);
 				break;
 			}
 			default: {
@@ -764,8 +763,8 @@ namespace Compiler::Passes {
 			}
 		}
 
-		if (scriptable && scriptable->script) {
-			if (const auto varInfo = scriptable->script->GetVariableByName(rhsName.c_str())) {
+		if (pFormScript) {
+			if (const auto varInfo = pFormScript->GetVariableByName(rhsName.c_str())) {
 				const auto varTokenType = VariableType_To_TokenType(static_cast<Script::VariableType>(varInfo->type));
 				const auto variableType = TokenType_To_Variable_TokenType(varTokenType);
 				if (variableType == kTokenType_Invalid) {
