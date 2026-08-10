@@ -492,7 +492,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh,
 	if (lh->refIdx)
 		script = GetReferencedQuestScript(lh->refIdx, context->eventList);
 	if (auto *arrayVar = rh->GetArrayVar(); arrayVar && var)
-		arrayVar->varName = std::string(script->GetName()) + '.' + script->GetVariableInfo(var->id)->name.CStr();
+		arrayVar->varName = std::string(script->GetFormEditorID()) + '.' + script->GetVariableInfo(var->id)->name.CStr();
 	else if (arrayVar && arrayVar->varName.empty())
 		arrayVar->varName = "<eval assign var not found>";
 #endif
@@ -1356,7 +1356,7 @@ std::unique_ptr<ScriptToken> Eval_DotSyntax(OperatorType op, ScriptToken *lh, Sc
 		context->Error("Attempting to call a command on a non-form or a NULL reference");
 		return nullptr;
 	}
-	if (!form->GetIsReference())
+	if (!form->IsReference())
 	{
 		context->Error("Attempting to call a function on a base object (this must be a reference)");
 		return nullptr;
@@ -3595,7 +3595,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 			// literal reference to a form
 			return ScriptToken::Create(refVar, refIdx);
 		}
-		if (refVar->form && !refVar->form->GetIsReference() && refVar->form->typeID != kFormType_TESQuest)
+		if (refVar->form && !refVar->form->IsReference() && refVar->form->typeID != kFormType_TESQuest)
 		{
 			Message(kError_InvalidDotSyntax);
 			return nullptr;
@@ -3614,7 +3614,7 @@ std::unique_ptr<ScriptToken> ExpressionParser::ParseOperand(Operator *curOp)
 				Message(kError_RefRequired, cmdInfo->longName);
 				return nullptr;
 			}
-			if (refVar && refVar->form && !refVar->form->GetIsReference()) // make sure we're calling it on a reference
+			if (refVar && refVar->form && !refVar->form->IsReference()) // make sure we're calling it on a reference
 				return nullptr;
 
 			return ScriptToken::Create(cmdInfo, refIdx);

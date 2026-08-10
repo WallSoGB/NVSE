@@ -63,7 +63,7 @@ QuestObjectiveTargets* PlayerCharacter::GetCurrentQuestObjectiveTargets()
 
 TESContainer* TESObjectREFR::GetContainer()
 {
-	if (IsActor_Runtime())
+	if (IsActor())
 		return &((TESActorBase*)baseForm)->container;
 	if (baseForm->typeID == kFormType_TESObjectCONT)
 		return &((TESObjectCONT*)baseForm)->container;

@@ -300,7 +300,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_Actor:
-				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsActor_InEditor()))
+				if (!spToken.varIdx && (!spToken.refObj || !spToken.refObj->IsActor()))
 				{
 					errorFmt = (const char *)0xD60C90;
 					goto compileError;
@@ -538,7 +538,7 @@ bool DefaultCommandParseHook(UInt16 numParams, ParamInfo *paramInfo, ScriptLineB
 				}
 				break;
 			case kParamType_NonFormList:
-				if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, BGSListForm) && !spToken.refObj->Unk_33())))
+				if (!spToken.varIdx && (!spToken.refObj || (NOT_ID(spToken.refObj, BGSListForm) && !spToken.refObj->IsObject())))
 				{
 					errorFmt = (const char *)0xD60D70;
 					goto compileError;
@@ -2181,7 +2181,7 @@ bool ExtractFormattedString(FormatStringArgs &args, char *buffer)
 
 			if (form)
 			{
-				if (form->GetIsReference())
+				if (form->IsReference())
 					form = ((TESObjectREFR *)form)->baseForm;
 
 				UInt8 objType = 0;

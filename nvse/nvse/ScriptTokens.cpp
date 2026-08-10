@@ -677,7 +677,7 @@ std::string ScriptToken::GetVariableName(Script* script) const
 			if (extraScript && extraScript->script)
 			{
 				auto *varInfo = extraScript->script->GetVariableInfo(varIdx);
-				if (varInfo && refr->GetName())
+				if (varInfo && refr->GetFormEditorID())
 				{
 					ScriptParsing::ScriptVariableToken scriptVarToken(extraScript->script, ScriptParsing::ExpressionCode::None, varInfo, refVar->form);
 					return scriptVarToken.ToString();
@@ -1018,7 +1018,7 @@ bool ScriptToken::ResolveVariable()
 		if (auto *var = g_ArrayMap.Get(value.var->data))
 		{
 			if (auto *varInfo = script->GetVariableInfo(value.var->id))
-				var->varName = std::string(script->GetName()) + "." + std::string(varInfo->name.CStr());
+				var->varName = std::string(script->GetFormEditorID()) + "." + std::string(varInfo->name.CStr());
 			else
 				var->varName = "<no var info>";
 			this->arrayVar = var;
@@ -1998,7 +1998,7 @@ char *ScriptToken::DebugPrint() const
 		sprintf_s(debugPrint, 512, "[Type=Ref, Value=%s]", value.refVar->name.CStr());
 		break;
 	case kTokenType_Global:
-		sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetName());
+		sprintf_s(debugPrint, 512, "[Type=Global, Value=%s]", value.global->GetFormEditorID());
 		break;
 	case kTokenType_ArrayElement:
 		sprintf_s(debugPrint, 512, "[Type=ArrayElement, Value=%g]", value.num);
@@ -2027,7 +2027,7 @@ char *ScriptToken::DebugPrint() const
 		break;
 #endif
 	case kTokenType_RefVar:
-		sprintf_s(debugPrint, 512, "[Type=RefVar, EDID=%s]", value.refVar->form->GetName());
+		sprintf_s(debugPrint, 512, "[Type=RefVar, EDID=%s]", value.refVar->form->GetFormEditorID());
 		break;
 	case kTokenType_Ambiguous:
 		sprintf_s(debugPrint, 512, "[Type=Ambiguous, no Value]");

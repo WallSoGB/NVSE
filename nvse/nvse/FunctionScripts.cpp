@@ -423,7 +423,7 @@ FunctionInfo::FunctionInfo(Script* script)
 			this->m_singleLineLambdaPosition = pos;
 	}
 #if _DEBUG
-	this->editorID = m_script->GetName();
+	this->editorID = m_script->GetFormEditorID();
 #endif
 }
 

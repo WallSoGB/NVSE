@@ -18,7 +18,7 @@ BGSDefaultObjectManager **g_defaultObjectManager = (BGSDefaultObjectManager **)0
 const char* TESForm::GetEditorID() const
 {
 #if EDITOR
-	return GetEditorID_InEditor();
+	return GetFormEditorID();
 #else
 	if (refID == 0x7)
 		return "Player";
@@ -42,17 +42,17 @@ const char* TESForm::GetEditorID() const
 		return "DefaultWaterExplosion";
 	if (refID == 0x1F6)
 		return "GasTrapDummy";
-	return GetName();
+	return GetFormEditorID();
 #endif
 }
 
 TESForm *TESForm::TryGetREFRParent(void)
 {
 	TESForm *result = this;
-	if (result)
+	if (result && result->IsReference())
 	{
-		TESObjectREFR *refr = DYNAMIC_CAST(this, TESForm, TESObjectREFR);
-		if (refr && refr->baseForm)
+		TESObjectREFR* refr = static_cast<TESObjectREFR*>(result);
+		if (refr->baseForm)
 			result = refr->baseForm;
 	}
 	return result;
@@ -74,7 +74,7 @@ TESFullName *TESForm::GetFullName() const
 			return &cell->worldSpace->fullName;
 		return fullName;
 	}
-	const TESForm *baseForm = GetIsReference() ? ((TESObjectREFR *)this)->baseForm : this;
+	const TESForm *baseForm = IsReference() ? ((TESObjectREFR *)this)->baseForm : this;
 	return DYNAMIC_CAST(baseForm, TESForm, TESFullName);
 }
 
@@ -130,7 +130,7 @@ TESForm *TESForm::CloneForm(bool persist) const
 
 std::string TESForm::GetStringRepresentation() const
 {
-	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetName() ? GetName() : "", GetFullName() ? GetFullName()->name.CStr() : "<no name>");
+	return FormatString(R"([id: %X, edid: "%s", name: "%s"])", refID, GetFormEditorID() ? GetFormEditorID() : "", GetFullName() ? GetFullName()->name.CStr() : "<no name>");
 }
 #endif
 

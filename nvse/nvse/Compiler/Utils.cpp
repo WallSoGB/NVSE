@@ -461,11 +461,11 @@ namespace Compiler {
 				break;
 			case kParamType_Actor:
 #if EDITOR
-				if (!form || !form->IsActor_InEditor()) {
+				if (!form || !form->IsActor()) {
 					return false;
 				}
 #else
-				if (!form || !form->IsActor_Runtime()) {
+				if (!form || !form->IsActor()) {
 					return false;
 				}
 #endif
@@ -650,7 +650,7 @@ namespace Compiler {
 					return false;
 				}
 #else
-				if (!form || (NOT_ID(form, BGSListForm) && !form->Unk_33())) {
+				if (!form || (NOT_ID(form, BGSListForm) && !form->IsObject())) {
 					return false;
 				}
 #endif
