@@ -505,13 +505,9 @@ public:
 	bool	resolved;	// 008	called during LoadForm, so scripts do not wait for TESForm_InitItem to be resolved
 	UInt8	pad[3];		// 009
 
-	static Script* GetFormScript(const TESForm* apForm) {
-		return CdeclCall<Script*>(0x4826D0, apForm);
-	}
+	static Script* GetFormScript(const TESForm* apForm);
 
-	static void SetFormScript(const TESForm* apForm, Script* apScript) {
-		CdeclCall<void>(0x4CE300, apForm, apScript);
-	}
+	static void SetFormScript(const TESForm* apForm, Script* apScript);
 };
 
 // 010
@@ -547,9 +543,7 @@ public:
 	UInt32	value;
 	// 008
 
-	static SInt32 GetFormValue(const TESForm* apForm) {
-		return CdeclCall<SInt32>(0x48E8A0, apForm);
-	}
+	static SInt32 GetFormValue(const TESForm* apForm);
 };
 
 // 10
@@ -567,9 +561,7 @@ public:
 	UInt32	unk2;					// 0C
 	// 010
 
-	static EnchantmentItem* GetFormEnchanting(const TESForm* apForm) {
-		return CdeclCall<EnchantmentItem*>(0x4BE330, apForm);
-	}
+	static EnchantmentItem* GetFormEnchanting(const TESForm* apForm);
 };
 
 // 08
@@ -592,9 +584,7 @@ public:
 	float	weight;		// 004
 	// 008
 
-	static float GetFormWeight(const TESForm* apForm, bool abHardcore) {
-		return CdeclCall<float>(0x48EBC0, apForm, abHardcore);
-	}
+	static float GetFormWeight(const TESForm* apForm, bool abHardcore);
 };
 
 // 008
@@ -608,13 +598,9 @@ public:
 
 	UInt32	health;		// 004
 
-	static TESHealthForm* GetFormAsHealthForm(const TESForm* apForm) {
-		return CdeclCall<TESHealthForm*>(0x4872E0, apForm);
-	}
+	static TESHealthForm* GetFormAsHealthForm(const TESForm* apForm);
 
-	static UInt32 GetFormHealth(const TESForm* apForm) {
-		return CdeclCall<float>(0x4873D0, apForm);
-	}
+	static UInt32 GetFormHealth(const TESForm* apForm);
 };
 
 // 008
@@ -628,9 +614,7 @@ public:
 
 	UInt16	damage;	// 04
 
-	static UInt16 GetAttackDamage(const TESForm* apForm) {
-		return CdeclCall<UInt16>(0x47FEF0, apForm);
-	}
+	static UInt16 GetAttackDamage(const TESForm* apForm);
 };
 
 
@@ -809,9 +793,7 @@ public:
 	UInt8	pad15[3];		// 15
 
 	void SetPath(const char* newPath)	{ SetModelPath(newPath); }
-	static const char* GetModel(const TESForm* apForm) {
-		return CdeclCall<const char*>(0x4895B0, apForm);
-	};
+	static const char* GetModel(const TESForm* apForm);
 };
 
 // 18
@@ -895,9 +877,7 @@ public:
 
 	DestructibleData	*data;			// 04
 
-	static BGSDestructibleObjectForm* GetDestructionForm(const TESForm* apForm) {
-		return CdeclCall<BGSDestructibleObjectForm*>(0x475400, apForm);
-	}
+	static BGSDestructibleObjectForm* GetDestructionForm(const TESForm* apForm);
 };
 
 STATIC_ASSERT(sizeof(BGSDestructibleObjectForm) == 0x8);
@@ -932,9 +912,7 @@ public:
 
 	BGSListForm	* listForm;	// 04
 
-	static BGSRepairItemList* GetFormAsRepairItemList(const TESForm* apForm) {
-		return CdeclCall<BGSRepairItemList*>(0x47BAC0, apForm);
-	}
+	static BGSRepairItemList* GetFormAsRepairItemList(const TESForm* apForm);
 };
 
 // 008
@@ -946,9 +924,7 @@ public:
 
 	UInt32	equipType;	// 08
 
-	static UInt32 GetEquipType(const TESForm* apForm) {
-		return CdeclCall<UInt32>(0x479430, apForm);
-	}
+	static UInt32 GetEquipType(const TESForm* apForm);
 };
 
 // 004
@@ -1065,9 +1041,7 @@ public:
 	TESModelRDT				modelRDT;			// 0C4
 	// 0DC
 
-	static TESBipedModelForm* GetFormAsBipedModel(const TESForm* apForm) {
-		return CdeclCall<TESBipedModelForm*>(0x480DB0, apForm);
-	}
+	static TESBipedModelForm* GetFormAsBipedModel(const TESForm* apForm);
 
 	static UInt32 MaskForSlot(UInt32 mask);
 
