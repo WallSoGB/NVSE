@@ -627,7 +627,7 @@ struct NVSEScriptInterface
 struct NVSEDataInterface
 {
 	enum {
-		kVersion = 3
+		kVersion = 4
 	};
 
 	UInt32		version;
@@ -661,7 +661,14 @@ struct NVSEDataInterface
 		kNVSEData_HasScriptCommand,
 		kNVSEData_DecompileScript,
 
-		// Available in GECK
+		// Deprecated in v4
+		kNVSEData_LegacyFormExtraDataGet,
+		kNVSEData_LegacyFormExtraDataGetAll,
+		kNVSEData_LegacyFormExtraDataAdd,
+		kNVSEData_LegacyFormExtraDataRemoveByName,
+		kNVSEData_LegacyFormExtraDataRemoveByPtr,
+
+		// Available in GECK, added in v4
 		kNVSEData_FormExtraDataGet,
 		kNVSEData_FormExtraDataGetAll,
 		kNVSEData_FormExtraDataAdd,
@@ -691,10 +698,13 @@ struct NVSEDataInterface
 // Example class:
 // class MyFormExtraData: public PluginFormExtraData { 
 // public:
-//	   MyFormExtraData() : PluginFormExtraData(MyFormExtraData::GetName()) {}		
+//	   static const NiFixedString& GetDataName() { static NiFixedString name = "MyFormExtraData"; return name; }	
+// 
+//	   MyFormExtraData() : PluginFormExtraData() {}		
 //     virtual ~MyFormExtraData() override = default;
+//	   virtual const NiFixedString& GetName() const override { return GetDataName(); }
+// 
 //     std::vector<float> myAttachedData;
-//     static const NiFixedString& GetName() { static NiFixedString name = "MyFormExtraData"; return name; }
 // };
 // 
 // Example creation:
@@ -704,12 +714,12 @@ struct NVSEDataInterface
 // PluginFormExtraData::Add(s_nvseDataApi, actor, data);
 // 
 // Example retrieval:
-// NiPointer<MyFormExtraData> extraData = (MyFormExtraData*)PluginFormExtraData::Get(s_nvseDataApi, actor, MyFormExtraData::GetName());
+// NiPointer<MyFormExtraData> extraData = (MyFormExtraData*)PluginFormExtraData::Get(s_nvseDataApi, actor, MyFormExtraData::GetDataName());
 //
 // Example removal:
 // PluginFormExtraData::Remove(s_nvseDataApi, actor, extraData);
 // or
-// PluginFormExtraData::Remove(s_nvseDataApi, actor, MyFormExtraData::GetName());
+// PluginFormExtraData::Remove(s_nvseDataApi, actor, MyFormExtraData::GetDataName());
 //
 // Example enumeration:
 // UInt32 count = PluginFormExtraData::GetAllExtraData(s_nvseDataApi, actor, nullptr); // get the count first
@@ -719,15 +729,63 @@ struct NVSEDataInterface
 class PluginFormExtraData
 {
 public:
-	NiFixedString	name;
+	// Current class version, defined by NVSE
+	// Do not change
+	enum {
+		kVersion = 1
+	};
+
+	enum RemovalReason {
+		kManualRequest = 0, // PluginFormExtraData::Remove
+		kFormDeletion  = 1, // TESForm's destructor
+	};
+
+	const UInt32	nvseReserved = 0; // reserved for NVSE's internal usage. Do not modify
 	UInt32			refCount = 0;
 
-	PluginFormExtraData(const NiFixedString& aName) : name(aName), refCount(0) {}
+	PluginFormExtraData() : nvseReserved(0), refCount(0) {}
+
+	// ------- VIRTUAL METHODS ------- 
+	// Used for the shared communication with NVSE, and other plugins
+	// When creating your own extradata class, you *must* define the GetName() method
+	// DO NOT reorder these declarations, as their order directly defines the one in the compiled virtual table!
+
+	// Normal C++ destructor
 	virtual ~PluginFormExtraData() {};
+
+	// Destructor with specified deallocator
+	// Used by NVSE to delete the extra data instance
 	virtual void DeleteThis() {
 		this->~PluginFormExtraData();
 		FormHeap_Free(this);
 	};
+
+	// Return your extradata's identifier name here
+	// Names are the sole identifier of form's extradatas;
+	// A single form cannot contain more than one extradata of the same name
+	virtual const NiFixedString& GetName() const = 0;
+
+	// Do not change
+	virtual UInt32 GetVersion() const { return kVersion; };
+
+	// Called when extradata is removed from NVSE's map
+	// Extradata's owner, and the reason for the removal are passed through arguments
+	// You can use it to invalidate internal data, while still holding references to your extradata
+	virtual bool OnRemoval(TESForm* removedFrom, UInt32 removalReason) { return true; };
+
+	// Reserved for future NVSE's use
+	virtual UInt32 Reserved0(void*, void*) { return 0; };
+	virtual UInt32 Reserved1(void*, void*) { return 0; };
+	virtual UInt32 Reserved2(void*, void*) { return 0; };
+	virtual UInt32 Reserved3(void*, void*) { return 0; };
+
+	// -------------------------------
+
+
+
+	// ------- Reference count methods -------
+	// Used by NiPointer for ref counting
+	// Do not modify
 
 	void IncRefCount() {
 		InterlockedIncrement(&refCount);
@@ -739,10 +797,18 @@ public:
 		}
 	}
 
+	// -------------------------------
+
+
+
+	// ------- NVSE Functions -------
+	// Functions that interface with NVSE's extradata API
+	// Use them to register, retrieve, and remove extradata
+
 	// Retrieves extra data from a form by name.
 	static inline PluginFormExtraData* Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name)
 	{
-		static auto* get = (PluginFormExtraData*(*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
+		static auto* get = (PluginFormExtraData *(*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
 		return get(form, name);
 	}
 
@@ -772,6 +838,72 @@ public:
 	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
 	static inline UInt32 GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, PluginFormExtraData** outData) {
 		static auto* getAll = (UInt32(*)(const TESForm*, PluginFormExtraData**)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
+		return getAll(form, outData);
+	}
+
+	// -------------------------------
+
+};
+
+// Legacy, pre-6.4.9 NVSE version
+// Used only for backwards compatibility
+// Legacy extra datas are kept separate, and require their specific functions to add and retrieve
+class LegacyPluginFormExtraData
+{
+public:
+	NiFixedString	name;
+	UInt32			refCount = 0;
+
+	LegacyPluginFormExtraData(const NiFixedString& aName) : name(aName), refCount(0) {}
+	virtual ~LegacyPluginFormExtraData() {};
+	virtual void DeleteThis() {
+		this->~LegacyPluginFormExtraData();
+		FormHeap_Free(this);
+	};
+
+	void IncRefCount() {
+		InterlockedIncrement(&refCount);
+	}
+
+	void DecRefCount() {
+		if (InterlockedDecrement(&refCount) == 0) {
+			DeleteThis();
+		}
+	}
+
+	// Retrieves extra data from a form by name.
+	static inline LegacyPluginFormExtraData* Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name)
+	{
+		static auto* get = (LegacyPluginFormExtraData*(*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_LegacyFormExtraDataGet);
+		return get(form, name);
+	}
+
+	// Adds extra data to a form.
+	// Returns true if the extra data was added successfully, false if it already exists, or arguments are null.
+	static inline bool Add(NVSEDataInterface* dataApi, TESForm* form, LegacyPluginFormExtraData* extraData)
+	{
+		static auto* add = (bool(*)(TESForm*, LegacyPluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_LegacyFormExtraDataAdd);
+		return add(form, extraData);
+	}
+
+	// Removes extra data from a form by name.
+	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name)
+	{
+		static auto* remove = (void (*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByName);
+		remove(form, name);
+	}
+
+	// Removes extra data from a form by pointer to the data.
+	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, LegacyPluginFormExtraData* extraData)
+	{
+		static auto* remove = (void (*)(TESForm*, LegacyPluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByPtr);
+		remove(form, extraData);
+	}
+
+	// Retrieves all extra data from a form.
+	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
+	static inline UInt32 GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, LegacyPluginFormExtraData** outData) {
+		static auto* getAll = (UInt32(*)(const TESForm*, LegacyPluginFormExtraData**)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_LegacyFormExtraDataGetAll);
 		return getAll(form, outData);
 	}
 };

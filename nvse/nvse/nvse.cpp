@@ -167,7 +167,7 @@ void NVSE_Initialize(void)
 #endif
 		CommandTable::Init();
 
-		FormExtraData::WriteHooks();
+		FormExtraDataManager::WriteHooks();
 
 #if RUNTIME
 		Commands_Input_Init();
