@@ -34,8 +34,8 @@ public:
 		kFormDeletion  = 1,
 	};
 
-	UInt32	nvseReserved = 0;
-	UInt32	refCount = 0;
+	UInt32			nvseReserved = 0;
+	volatile UInt32	refCount = 0;
 
 	FormExtraData() : nvseReserved(0), refCount(0) {}
 protected:

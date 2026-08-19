@@ -741,7 +741,7 @@ public:
 	};
 
 	const UInt32	nvseReserved = 0; // reserved for NVSE's internal usage. Do not modify
-	UInt32			refCount = 0;
+	volatile UInt32	refCount = 0;
 
 	PluginFormExtraData() : nvseReserved(0), refCount(0) {}
 
