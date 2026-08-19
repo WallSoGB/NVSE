@@ -100,7 +100,8 @@ namespace
 			return nullptr;
 		}
 
-		UInt32 __fastcall GetAll(const TESForm* form, T** outData) const noexcept {
+		template<class arrayItem>
+		UInt32 __fastcall GetAll(const TESForm* form, arrayItem* outData) const noexcept {
 			std::shared_lock lock(mutex);
 
 			UInt32 count = 0;
@@ -109,8 +110,12 @@ namespace
 				const auto& dataList = iter->second;
 				count = static_cast<UInt32>(dataList.size());
 
-				if (outData)
-					memcpy(outData, dataList.data(), count);
+				if (count && outData) {
+					for (UInt32 i = 0; i < count; ++i) {
+						outData[i] = dataList[i];
+					}
+				}
+					
 			}
 			return count;
 		}
@@ -182,17 +187,20 @@ FormExtraData* __fastcall FormExtraDataManager::Get(const TESForm* form, const c
 	}
 }
 
-UInt32 __fastcall FormExtraDataManager::GetAll(const TESForm* form, FormExtraData** outData, bool legacyMode) noexcept
+UInt32 __fastcall FormExtraDataManager::GetAll(const TESForm* form, NiPointer<FormExtraData>* outData) noexcept
 {
 	if (!form) [[unlikely]]
 		return 0;
 
-	if (legacyMode) [[unlikely]] {
-		return g_legacyFormExtraDataMap.GetAll(form, reinterpret_cast<LegacyFormExtraData**>(outData));
-	}
-	else [[likely]] {
-		return g_formExtraDataMap.GetAll(form, outData);
-	}
+	return g_formExtraDataMap.GetAll<NiPointer<FormExtraData>>(form, outData);
+}
+
+UInt32 __fastcall FormExtraDataManager::LegacyGetAll(const TESForm* form, LegacyFormExtraData** outData) noexcept
+{
+	if (!form) [[unlikely]]
+		return 0;
+
+	return g_legacyFormExtraDataMap.GetAll<LegacyFormExtraData*>(form, outData);
 }
 
 namespace Hooks {

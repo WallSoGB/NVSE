@@ -15,7 +15,9 @@ protected:
 
 	static FormExtraData* __fastcall Get(const TESForm* form, const char* name, bool legacyMode) noexcept;
 
-	static UInt32 __fastcall GetAll(const TESForm* form, FormExtraData** outData, bool legacyMode) noexcept;
+	static UInt32 __fastcall GetAll(const TESForm* form, NiPointer<FormExtraData>* outData) noexcept;
+
+	static UInt32 __fastcall LegacyGetAll(const TESForm* form, LegacyFormExtraData** outData) noexcept;
 
 public:
 
@@ -74,7 +76,7 @@ public:
 
 	static FormExtraData* __fastcall Get(const TESForm* form, const char* name) noexcept { return FormExtraDataManager::Get(form, name, false); }
 
-	static UInt32 __fastcall GetAll(const TESForm* form, FormExtraData** outData) noexcept { return FormExtraDataManager::GetAll(form, outData, false); }
+	static UInt32 __fastcall GetAll(const TESForm* form, NiPointer<FormExtraData>* outData) noexcept { return FormExtraDataManager::GetAll(form, outData); }
 };
 
 // Deprecated, kept only for backwards compatibility
@@ -113,5 +115,5 @@ public:
 
 	static FormExtraData* __cdecl Get(const TESForm* form, const char* name) noexcept { return FormExtraDataManager::Get(form, name, true); }
 
-	static UInt32 __cdecl GetAll(const TESForm* form, FormExtraData** outData) noexcept { return FormExtraDataManager::GetAll(form, outData, true); }
+	static UInt32 __cdecl GetAll(const TESForm* form, FormExtraData** outData) noexcept { return FormExtraDataManager::LegacyGetAll(form, reinterpret_cast<LegacyFormExtraData**>(outData)); }
 };

@@ -726,7 +726,7 @@ struct NVSEDataInterface
 //
 // Example enumeration:
 // UInt32 count = PluginFormExtraData::GetAllExtraData(s_nvseDataApi, actor, nullptr); // get the count first
-// PluginFormExtraData** data = new PluginFormExtraData*[count]; // allocate an array of pointers
+// NiPointer<PluginFormExtraData>* data = new NiPointer<PluginFormExtraData>[count]; // allocate an array of pointers
 // PluginFormExtraData::GetAllExtraData(s_nvseDataApi, actor, data); // retrieve the data
 // delete[] data; // clean up the array
 class PluginFormExtraData
@@ -845,8 +845,8 @@ public:
 
 	// Retrieves all extra data from a form.
 	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
-	static inline UInt32 __fastcall GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, PluginFormExtraData** outData) noexcept {
-		static auto* getAll = (UInt32(__fastcall*)(const TESForm*, PluginFormExtraData**)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
+	static inline UInt32 __fastcall GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, NiPointer<PluginFormExtraData>* outData) noexcept {
+		static auto* getAll = (UInt32(__fastcall*)(const TESForm*, NiPointer<PluginFormExtraData>*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
 		return getAll(form, outData);
 	}
 
