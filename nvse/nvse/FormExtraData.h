@@ -30,8 +30,9 @@ public:
 	};
 
 	enum RemovalReason {
-		kManualRequest = 0,
-		kFormDeletion  = 1,
+		kManualRequest		= 0,
+		kFormDeletion		= 1,
+		kTrashedReference	= 2,
 	};
 
 	UInt32			nvseReserved = 0;

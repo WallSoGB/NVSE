@@ -739,8 +739,9 @@ public:
 	};
 
 	enum RemovalReason {
-		kManualRequest = 0, // PluginFormExtraData::Remove
-		kFormDeletion  = 1, // TESForm's destructor
+		kManualRequest		= 0, // PluginFormExtraData::Remove
+		kFormDeletion		= 1, // TESForm's destructor
+		kTrashedReference	= 2, // TESObjectREFR's GarbageCollector (Game only)
 	};
 
 	const UInt32	nvseReserved = 0; // reserved for NVSE's internal usage. Do not modify

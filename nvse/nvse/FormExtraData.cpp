@@ -74,14 +74,14 @@ namespace
 			}
 		}
 
-		void __fastcall RemoveForForm(TESForm* form) noexcept {
+		void __fastcall RemoveForForm(TESForm* form, FormExtraData::RemovalReason reason) noexcept {
 			std::unique_lock lock(mutex);
 
 			auto iter = this->find(form);
 			if (iter != this->end()) {
 				for (const auto& data : iter->second) {
 					if (data)
-						data->OnRemoval(form, FormExtraData::RemovalReason::kFormDeletion);
+						data->OnRemoval(form, reason);
 				}
 				this->erase(iter);
 			}
@@ -121,12 +121,6 @@ namespace
 
 	ExtraDataFormMap g_formExtraDataMap;
 	LegacyExtraDataFormMap g_legacyFormExtraDataMap;
-
-#if RUNTIME
-	UInt32 g_removeFromAllFormMapsAddr = 0x483C70;
-#else
-	UInt32 g_removeFromAllFormMapsAddr = 0x4FB910;
-#endif
 }
 
 bool __fastcall FormExtraDataManager::Add(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept
@@ -201,20 +195,49 @@ UInt32 __fastcall FormExtraDataManager::GetAll(const TESForm* form, FormExtraDat
 	}
 }
 
-static bool __fastcall RemoveFromAllFormsMapHook(TESForm* form) noexcept
-{
-	g_formExtraDataMap.RemoveForForm(form);
-	{	[[unlikely]]
-		g_legacyFormExtraDataMap.RemoveForForm(form);
+namespace Hooks {
+
+	namespace {
+		__declspec(noinline) void __fastcall RemoveForm(TESForm* form, FormExtraData::RemovalReason reason) {
+			g_formExtraDataMap.RemoveForForm(form, reason);
+			{
+				[[unlikely]]
+				g_legacyFormExtraDataMap.RemoveForForm(form, reason);
+			}
+		}
 	}
-	return ThisStdCall<bool>(g_removeFromAllFormMapsAddr, form);
+
+	template <UInt32 address, FormExtraData::RemovalReason reason>
+	class RemoveFromAllFormsMapHook {
+		static inline UInt32 replacedAddress = 0;
+
+		static bool __fastcall Hook(TESForm* form) noexcept {
+			RemoveForm(form, reason);
+			return ThisStdCall<bool>(replacedAddress, form);
+		}
+
+	public:
+		RemoveFromAllFormsMapHook() {
+			WriteRelCall(address, &RemoveFromAllFormsMapHook::Hook, &replacedAddress);
+		}
+	};
+
+	void InitHooks() 
+	{
+#if RUNTIME
+		RemoveFromAllFormsMapHook<0x483669, FormExtraData::RemovalReason::kFormDeletion>();
+		RemoveFromAllFormsMapHook<0x8680A4, FormExtraData::RemovalReason::kTrashedReference>();
+#else
+		RemoveFromAllFormsMapHook<0x4FD0C7, FormExtraData::RemovalReason::kFormDeletion>();
+		// GECK has no garbage collector
+#endif
+	}
+
 }
+
+
 
 void FormExtraDataManager::WriteHooks() noexcept
 {
-#if RUNTIME
-	WriteRelCall(0x483669, &RemoveFromAllFormsMapHook, &g_removeFromAllFormMapsAddr);
-#else
-	WriteRelCall(0x4FD0C7, &RemoveFromAllFormsMapHook, &g_removeFromAllFormMapsAddr);
-#endif
+	Hooks::InitHooks();
 }
