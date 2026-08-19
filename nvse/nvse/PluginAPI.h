@@ -15,6 +15,7 @@ struct ParamInfo;
 class TESObjectREFR;
 class Script;
 class TESForm;
+class PluginFormExtraData;
 struct ScriptEventList;
 struct ArrayKey;
 namespace PluginAPI { class ArrayAPI; }
@@ -690,6 +691,34 @@ struct NVSEDataInterface
 
 };
 
+#if RUNTIME
+
+//== Type definitions of function pointers, to easily cast the functions returned by NVSEDataInterface::GetFunc
+
+// Inventory Reference function pointer typedefs:
+typedef InventoryRef* (__stdcall* _InventoryReferenceCreate)(TESObjectREFR* container, const InventoryRef::Data& data, bool bValidate);
+typedef InventoryRef* (*_InventoryReferenceGetForRefID)(UInt32 refID);
+typedef InventoryRef* (*_InventoryReferenceGetRefBySelf)(InventoryRef* self);
+typedef TESObjectREFR* (__stdcall* _InventoryReferenceCreateEntry)(TESObjectREFR* container, TESForm* itemForm, SInt32 countDelta, ExtraDataList* xData);
+
+// Lambda function pointer typedefs:
+typedef void (*_LambdaDeleteAllForScript)(Script* parentScript);
+typedef void (*_LambdaSaveVariableList)(Script* parentScript);
+typedef void (*_LambdaUnsaveVariableList)(Script* parentScript);
+typedef bool (*_IsScriptLambda)(Script* parentScript);
+
+// Script-related function pointer typedefs:
+typedef bool (*_HasScriptCommand)(Script* script, CommandInfo* info, CommandInfo* eventBlock);
+typedef bool (*_DecompileScript)(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize);
+
+#endif
+
+typedef PluginFormExtraData* (__fastcall* _PluginFormExtraData_Get)(const TESForm* form, const char* name);
+typedef UInt32 (__fastcall* _PluginFormExtraData_GetAll)(const TESForm* form, NiPointer<PluginFormExtraData>* outArray);
+typedef bool(__fastcall* _PluginFormExtraData_Add)(TESForm* form, PluginFormExtraData* formExtraData);
+typedef void(__fastcall* _PluginFormExtraData_RemoveByName)(TESForm* form, const char* name);
+typedef void(__fastcall* _PluginFormExtraData_RemoveByPtr)(TESForm* form, PluginFormExtraData* formExtraData);
+
 // --- PluginFormExtraData ---
 // Extend this class and allocate on game's heap, then use the static methods to add, get, or remove it from a form
 // The class is ref counted, so you must use a NiPointer to hold it safely.
@@ -821,7 +850,7 @@ public:
 	[[nodiscard]] 
 	static inline PluginFormExtraData* __fastcall Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name) noexcept
 	{
-		static auto* get = (PluginFormExtraData *(__fastcall*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataGet);
+		static auto* get = static_cast<_PluginFormExtraData_Get>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataGet));
 		return get(form, name);
 	}
 
@@ -829,28 +858,28 @@ public:
 	// Returns true if the extra data was added successfully, false if it already exists, or arguments are null.
 	static inline bool __fastcall Add(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData) noexcept
 	{
-		static auto* add = (bool(__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd);
+		static auto* add = static_cast<_PluginFormExtraData_Add>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd));
 		return add(form, extraData);
 	}
 
 	// Removes extra data from a form by name (case sensitive).
 	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name) noexcept
 	{
-		static auto* remove = (void (__fastcall*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName);
+		static auto* remove = static_cast<_PluginFormExtraData_RemoveByName>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName));
 		remove(form, name);
 	}
 
 	// Removes extra data from a form by pointer to the data.
 	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData) noexcept
 	{
-		static auto* remove = (void (__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr);
+		static auto* remove = static_cast<_PluginFormExtraData_RemoveByPtr>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr));
 		remove(form, extraData);
 	}
 
 	// Retrieves all extra data from a form.
 	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
 	static inline UInt32 __fastcall GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, NiPointer<PluginFormExtraData>* outData) noexcept {
-		static auto* getAll = (UInt32(__fastcall*)(const TESForm*, NiPointer<PluginFormExtraData>*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataGetAll);
+		static auto* getAll = static_cast<_PluginFormExtraData_GetAll>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataGetAll));
 		return getAll(form, outData);
 	}
 
@@ -921,28 +950,6 @@ public:
 		return getAll(form, outData);
 	}
 };
-
-#if RUNTIME
-
-//== Type definitions of function pointers, to easily cast the functions returned by NVSEDataInterface::GetFunc
-
-// Inventory Reference function pointer typedefs:
-typedef InventoryRef* (__stdcall* _InventoryReferenceCreate)(TESObjectREFR* container, const InventoryRef::Data& data, bool bValidate);
-typedef InventoryRef* (*_InventoryReferenceGetForRefID)(UInt32 refID);
-typedef InventoryRef* (*_InventoryReferenceGetRefBySelf)(InventoryRef* self);
-typedef TESObjectREFR* (__stdcall* _InventoryReferenceCreateEntry)(TESObjectREFR* container, TESForm* itemForm, SInt32 countDelta, ExtraDataList* xData);
-
-// Lambda function pointer typedefs:
-typedef void (*_LambdaDeleteAllForScript)(Script* parentScript);
-typedef void (*_LambdaSaveVariableList)(Script* parentScript);
-typedef void (*_LambdaUnsaveVariableList)(Script* parentScript);
-typedef bool (*_IsScriptLambda)(Script* parentScript);
-
-// Script-related function pointer typedefs:
-typedef bool (*_HasScriptCommand)(Script* script, CommandInfo* info, CommandInfo* eventBlock);
-typedef bool (*_DecompileScript)(Script* script, SInt32 lineNumber, char* buffer, UInt32 bufferSize);
-
-#endif
 
 /**** serialization API docs ***************************************************
  *	
