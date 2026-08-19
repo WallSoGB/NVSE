@@ -105,7 +105,7 @@ ScriptTokenCacheFormExtraData* ScriptTokenCacheFormExtraData::Create()
 	return item;
 }
 
-const NiFixedString& ScriptTokenCacheFormExtraData::GetDataName()
+const NiFixedString& ScriptTokenCacheFormExtraData::GetDataName() noexcept
 {
 	static NiFixedString name = "ScriptTokenCacheFormExtraData";
 	return name;

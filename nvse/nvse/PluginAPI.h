@@ -750,8 +750,12 @@ public:
 	// When creating your own extradata class, you *must* define the GetName() method
 	// DO NOT reorder these declarations, as their order directly defines the one in the compiled virtual table!
 
+protected:
 	// Normal C++ destructor
+	// Protected in order to prevent deallocator mismatches - use DeleteThis for actual deletion (ideally, use a NiPointer)
 	virtual ~PluginFormExtraData() {};
+
+public:
 
 	// Destructor with specified deallocator
 	// Used by NVSE to delete the extra data instance
@@ -806,38 +810,38 @@ public:
 	// Use them to register, retrieve, and remove extradata
 
 	// Retrieves extra data from a form by name.
-	static inline PluginFormExtraData* Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name)
+	static inline PluginFormExtraData* __fastcall Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name)
 	{
-		static auto* get = (PluginFormExtraData *(*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
+		static auto* get = (PluginFormExtraData *(__fastcall*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
 		return get(form, name);
 	}
 
 	// Adds extra data to a form.
 	// Returns true if the extra data was added successfully, false if it already exists, or arguments are null.
-	static inline bool Add(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData)
+	static inline bool __fastcall Add(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData)
 	{
-		static auto* add = (bool(*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataAdd);
+		static auto* add = (bool(__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataAdd);
 		return add(form, extraData);
 	}
 
 	// Removes extra data from a form by name.
-	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name)
+	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name)
 	{
-		static auto* remove = (void (*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName);
+		static auto* remove = (void (__fastcall*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName);
 		remove(form, name);
 	}
 
 	// Removes extra data from a form by pointer to the data.
-	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData)
+	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData)
 	{
-		static auto* remove = (void (*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr);
+		static auto* remove = (void (__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr);
 		remove(form, extraData);
 	}
 
 	// Retrieves all extra data from a form.
 	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
-	static inline UInt32 GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, PluginFormExtraData** outData) {
-		static auto* getAll = (UInt32(*)(const TESForm*, PluginFormExtraData**)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
+	static inline UInt32 __fastcall GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, PluginFormExtraData** outData) {
+		static auto* getAll = (UInt32(__fastcall*)(const TESForm*, PluginFormExtraData**)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
 		return getAll(form, outData);
 	}
 
@@ -848,7 +852,7 @@ public:
 // Legacy, pre-6.4.9 NVSE version
 // Used only for backwards compatibility
 // Legacy extra datas are kept separate, and require their specific functions to add and retrieve
-class LegacyPluginFormExtraData
+class [[deprecated]] LegacyPluginFormExtraData
 {
 public:
 	NiFixedString	name;

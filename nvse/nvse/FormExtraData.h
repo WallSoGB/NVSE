@@ -8,14 +8,14 @@ protected:
 	friend class FormExtraData;
 	friend class LegacyFormExtraData;
 
-	__declspec(noinline) static bool Add(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
+	static bool __fastcall Add(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
 
-	__declspec(noinline) static void RemoveByName(TESForm* form, const char* name, bool legacyMode) noexcept;
-	__declspec(noinline) static void RemoveByPtr(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
+	static void __fastcall RemoveByName(TESForm* form, const char* name, bool legacyMode) noexcept;
+	static void __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
 
-	__declspec(noinline) static FormExtraData* Get(const TESForm* form, const char* name, bool legacyMode) noexcept;
+	static FormExtraData* __fastcall Get(const TESForm* form, const char* name, bool legacyMode) noexcept;
 
-	__declspec(noinline) static UInt32 GetAll(const TESForm* form, FormExtraData** outData, bool legacyMode) noexcept;
+	static UInt32 __fastcall GetAll(const TESForm* form, FormExtraData** outData, bool legacyMode) noexcept;
 
 public:
 
@@ -38,7 +38,9 @@ public:
 	UInt32	refCount = 0;
 
 	FormExtraData() : nvseReserved(0), refCount(0) {}
+protected:
 	virtual ~FormExtraData() {};
+public:
 	virtual void DeleteThis() {
 		this->~FormExtraData();
 		FormHeap_Free(this);
@@ -64,14 +66,14 @@ public:
 		}
 	}
 
-	static bool Add(TESForm* form, FormExtraData* formExtraData) { return FormExtraDataManager::Add(form, formExtraData, false); }
+	static bool __fastcall Add(TESForm* form, FormExtraData* formExtraData) { return FormExtraDataManager::Add(form, formExtraData, false); }
 
-	static void RemoveByName(TESForm* form, const char* name) { FormExtraDataManager::RemoveByName(form, name, false); }
-	static void RemoveByPtr(TESForm* form, FormExtraData* formExtraData) { FormExtraDataManager::RemoveByPtr(form, formExtraData, false); };
+	static void __fastcall RemoveByName(TESForm* form, const char* name) { FormExtraDataManager::RemoveByName(form, name, false); }
+	static void __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData) { FormExtraDataManager::RemoveByPtr(form, formExtraData, false); };
 
-	static FormExtraData* Get(const TESForm* form, const char* name) { return FormExtraDataManager::Get(form, name, false); }
+	static FormExtraData* __fastcall Get(const TESForm* form, const char* name) { return FormExtraDataManager::Get(form, name, false); }
 
-	static UInt32 GetAll(const TESForm* form, FormExtraData** outData) { return FormExtraDataManager::GetAll(form, outData, false); }
+	static UInt32 __fastcall GetAll(const TESForm* form, FormExtraData** outData) { return FormExtraDataManager::GetAll(form, outData, false); }
 };
 
 // Deprecated, kept only for backwards compatibility
@@ -98,12 +100,17 @@ public:
 		}
 	}
 
-	static bool Add(TESForm* form, FormExtraData* formExtraData) { return FormExtraDataManager::Add(form, formExtraData, true); }
+	inline const NiFixedString& GetName() const { return name; }
 
-	static void RemoveByName(TESForm* form, const char* name) { FormExtraDataManager::RemoveByName(form, name, true); }
-	static void RemoveByPtr(TESForm* form, FormExtraData* formExtraData) { FormExtraDataManager::RemoveByPtr(form, formExtraData, true); };
+	// Not a thing, used only for template compatibility
+	inline bool OnRemoval(TESForm* removedFrom, UInt32 removalReason) { return true; };
 
-	static FormExtraData* Get(const TESForm* form, const char* name) { return FormExtraDataManager::Get(form, name, true); }
+	static bool __cdecl Add(TESForm* form, FormExtraData* formExtraData) { return FormExtraDataManager::Add(form, formExtraData, true); }
 
-	static UInt32 GetAll(const TESForm* form, FormExtraData** outData) { return FormExtraDataManager::GetAll(form, outData, true); }
+	static void __cdecl RemoveByName(TESForm* form, const char* name) { FormExtraDataManager::RemoveByName(form, name, true); }
+	static void __cdecl RemoveByPtr(TESForm* form, FormExtraData* formExtraData) { FormExtraDataManager::RemoveByPtr(form, formExtraData, true); };
+
+	static FormExtraData* __cdecl Get(const TESForm* form, const char* name) { return FormExtraDataManager::Get(form, name, true); }
+
+	static UInt32 __cdecl GetAll(const TESForm* form, FormExtraData** outData) { return FormExtraDataManager::GetAll(form, outData, true); }
 };

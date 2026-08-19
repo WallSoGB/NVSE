@@ -54,5 +54,5 @@ public:
 
 	static ScriptTokenCacheFormExtraData* Create();
 	static ScriptTokenCacheFormExtraData* Get(Script* script);
-	static const NiFixedString& GetDataName();
+	static const NiFixedString& GetDataName() noexcept;
 };
