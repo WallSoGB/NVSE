@@ -138,10 +138,13 @@ bool __fastcall FormExtraDataManager::Add(TESForm* form, FormExtraData* formExtr
 		return g_legacyFormExtraDataMap.AddData(form, reinterpret_cast<LegacyFormExtraData*>(formExtraData));
 	}
 	else [[likely]] {
+		if (formExtraData->GetVersion() > FormExtraData::kVersion) [[unlikely]] {
 #ifdef _DEBUG
-		if (formExtraData->GetVersion() > FormExtraData::kVersion)
+			_DMESSAGE("Tried to add FormExtraData with a version newer than supported! (Got %i, max supported is %i)", formExtraData->GetVersion(), FormExtraData::kVersion);
 			DebugBreak();
 #endif
+			return false;
+		}
 		return g_formExtraDataMap.AddData(form, formExtraData);
 	}
 }
