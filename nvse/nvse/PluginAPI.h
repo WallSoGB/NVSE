@@ -809,7 +809,7 @@ public:
 	// Functions that interface with NVSE's extradata API
 	// Use them to register, retrieve, and remove extradata
 
-	// Retrieves extra data from a form by name.
+	// Retrieves extra data from a form by name (case sensitive).
 	[[nodiscard]] 
 	static inline PluginFormExtraData* __fastcall Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name) noexcept
 	{
@@ -825,7 +825,7 @@ public:
 		return add(form, extraData);
 	}
 
-	// Removes extra data from a form by name.
+	// Removes extra data from a form by name (case sensitive).
 	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name) noexcept
 	{
 		static auto* remove = (void (__fastcall*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName);
@@ -876,7 +876,7 @@ public:
 		}
 	}
 
-	// Retrieves extra data from a form by name.
+	// Retrieves extra data from a form by name (case sensitive).
 	[[nodiscard]] 
 	static inline LegacyPluginFormExtraData* Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name) noexcept
 	{
@@ -892,7 +892,7 @@ public:
 		return add(form, extraData);
 	}
 
-	// Removes extra data from a form by name.
+	// Removes extra data from a form by name (case sensitive).
 	static inline void Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name) noexcept
 	{
 		static auto* remove = (void (*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByName);
