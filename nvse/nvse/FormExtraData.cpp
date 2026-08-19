@@ -5,43 +5,47 @@
 
 namespace 
 {
-	template<class T>
-	class FormExtraDataMap : public std::unordered_map<const TESForm*, std::vector<NiPointer<T>>> {
-	public:
-		mutable std::shared_mutex mutex;
+	// We're abusing the fact that maps are templates and singletons, and making methods and members static
+	// This allows us to use __fastcall fully (as both arguments are passed through registers), nothing is wasted on storing "this" in ecx
+	// The compiler inlines the singletons either way, so ecx goes to waste with __thiscall methods
 
-		bool __fastcall AddData(TESForm* form, T* formExtraData) noexcept {
+	template<class T>
+	class FormExtraDataMap {
+	public:
+		using _Array = std::vector<NiPointer<T>>;
+		using _Map	 = std::unordered_map<const TESForm*, _Array>;
+
+		static inline std::shared_mutex mutex;
+		static inline _Map				formMap;
+
+		static bool __fastcall AddData(TESForm* form, T* formExtraData) noexcept {
 			const NiFixedString name = formExtraData->GetName();
 			if (!name) [[unlikely]]
 				return false;
 
 			std::unique_lock lock(mutex);
 
-			auto iter = this->find(form);
-			if (iter != this->end()) [[unlikely]] {
-				auto& dataList = iter->second;
-				if (std::ranges::any_of(dataList, [&](const NiPointer<T>& data) 
-						{ return data && data->GetName() == name; }
-					)) [[unlikely]]
-				{
-					return false; // Already exists
-				}
+			_Array& array = formMap[form];
+
+			if (std::ranges::any_of(array, [&](const NiPointer<T>& data) { return data && data->GetName() == name; })) [[unlikely]] {
+				return false; // Already exists
 			}
 
-			(*this)[form].emplace_back(formExtraData);
+			array.emplace_back(formExtraData);
+
 			return true;
 		}
 	
-		bool __fastcall RemoveByName(TESForm* form, const char* name) noexcept {
+		static bool __fastcall RemoveByName(TESForm* form, const char* name) noexcept {
 			NiPointer<T> storedData;
 			{
 				std::unique_lock lock(mutex);
 
-				auto iter = this->find(form);
-				if (iter != this->end()) [[likely]] {
-					auto& dataList = iter->second;
+				auto iter = formMap.find(form);
+				if (iter != formMap.end()) [[likely]] {
+					_Array& array = iter->second;
 
-					std::erase_if(dataList, [&](const NiPointer<T>& data) {
+					std::erase_if(array, [&](const NiPointer<T>& data) {
 						if (data && data->GetName() == name) {
 							storedData = data;
 							return true;
@@ -50,8 +54,8 @@ namespace
 						}
 					);
 
-					if (dataList.empty())
-						this->erase(iter);
+					if (array.empty())
+						formMap.erase(iter);
 				}
 			}
 			if (storedData)
@@ -60,17 +64,17 @@ namespace
 			return storedData;
 		}
 
-		bool __fastcall RemoveByPtr(TESForm* form, T* formExtraData) noexcept {
+		static bool __fastcall RemoveByPtr(TESForm* form, T* formExtraData) noexcept {
 			NiPointer<T> storedData;
 			{
 				std::unique_lock lock(mutex);
 
-				auto iter = this->find(form);
-				if (iter != this->end()) [[likely]] {
-					auto& dataList = iter->second;
+				auto iter = formMap.find(form);
+				if (iter != formMap.end()) [[likely]] {
+					_Array& array = iter->second;
 
-					std::erase_if(dataList, [&](const NiPointer<T>& data) {
-						if (data && data == formExtraData) {
+					std::erase_if(array, [&](const NiPointer<T>& data) {
+						if (data == formExtraData) {
 							storedData = data;
 							return true;
 						}
@@ -78,8 +82,8 @@ namespace
 						}
 					);
 
-					if (dataList.empty())
-						this->erase(iter);
+					if (array.empty())
+						formMap.erase(iter);
 				}
 			}
 			if (storedData)
@@ -88,28 +92,27 @@ namespace
 			return storedData;
 		}
 
-		void __fastcall RemoveForForm(TESForm* form, FormExtraData::RemovalReason reason) noexcept {
-			std::vector<NiPointer<T>> storedData;
+		static void __fastcall RemoveForForm(TESForm* form, FormExtraData::RemovalReason reason) noexcept {
+			_Array storedData;
 			{
 				std::unique_lock lock(mutex);
 
-				auto iter = this->find(form);
-				if (iter != this->end()) {
+				auto iter = formMap.find(form);
+				if (iter != formMap.end()) {
 					storedData = std::move(iter->second);
-					this->erase(iter);
+					formMap.erase(iter);
 				}
 			}
-			for (const auto& data : storedData) {
-				if (data)
-					data->OnRemoval(form, reason);
+			for (auto& data : storedData) {
+				data->OnRemoval(form, reason);
 			}
 		}
 	
-		T* __fastcall Get(const TESForm* form, const char* name) const noexcept {
+		static T* __fastcall Get(const TESForm* form, const char* name) noexcept {
 			std::shared_lock lock(mutex);
 
-			auto iter = this->find(form);
-			if (iter != this->end()) [[likely]] {
+			const auto iter = formMap.find(form);
+			if (iter != formMap.end()) [[likely]] {
 				for (const auto& data : iter->second) {
 					if (data && data->GetName() == name)
 						return data;
@@ -119,18 +122,18 @@ namespace
 		}
 
 		template<class arrayItem>
-		UInt32 __fastcall GetAll(const TESForm* form, arrayItem* outData) const noexcept {
+		static UInt32 __fastcall GetAll(const TESForm* form, arrayItem* outData) noexcept {
 			std::shared_lock lock(mutex);
 
 			UInt32 count = 0;
-			auto iter = this->find(form);
-			if (iter != this->end()) [[likely]] {
-				const auto& dataList = iter->second;
-				count = static_cast<UInt32>(dataList.size());
+			const auto iter = formMap.find(form);
+			if (iter != formMap.end()) [[likely]] {
+				const _Array& array = iter->second;
+				count = static_cast<UInt32>(array.size());
 
 				if (count && outData) {
 					for (UInt32 i = 0; i < count; ++i) {
-						outData[i] = dataList[i];
+						outData[i] = array[i];
 					}
 				}
 					
@@ -142,8 +145,8 @@ namespace
 	using ExtraDataFormMap			= FormExtraDataMap<FormExtraData>;
 	using LegacyExtraDataFormMap	= FormExtraDataMap<LegacyFormExtraData>;
 
-	ExtraDataFormMap g_formExtraDataMap;
-	LegacyExtraDataFormMap g_legacyFormExtraDataMap;
+	static constexpr inline ExtraDataFormMap g_formExtraDataMap;
+	static constexpr inline LegacyExtraDataFormMap g_legacyFormExtraDataMap;
 }
 
 bool __fastcall FormExtraDataManager::Add(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept
@@ -224,7 +227,7 @@ UInt32 __fastcall FormExtraDataManager::LegacyGetAll(const TESForm* form, Legacy
 namespace Hooks {
 
 	namespace {
-		__declspec(noinline) void __fastcall RemoveForm(TESForm* form, FormExtraData::RemovalReason reason) {
+		__declspec(noinline) void __fastcall RemoveForm(TESForm* form, FormExtraData::RemovalReason reason) noexcept {
 			g_formExtraDataMap.RemoveForForm(form, reason);
 			{
 				[[unlikely]]
@@ -243,7 +246,7 @@ namespace Hooks {
 		}
 
 	public:
-		RemoveFromAllFormsMapHook() {
+		RemoveFromAllFormsMapHook() noexcept {
 			WriteRelCall(address, &RemoveFromAllFormsMapHook::Hook, &replacedAddress);
 		}
 	};
