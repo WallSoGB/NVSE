@@ -56,24 +56,24 @@ public:
 	virtual UInt32 Reserved2(void*, void*) { return 0; };
 	virtual UInt32 Reserved3(void*, void*) { return 0; };
 
-	void IncRefCount() {
+	void IncRefCount() noexcept {
 		InterlockedIncrement(&refCount);
 	}
 
-	void DecRefCount() {
+	void DecRefCount() noexcept {
 		if (InterlockedDecrement(&refCount) == 0) {
 			DeleteThis();
 		}
 	}
 
-	static bool __fastcall Add(TESForm* form, FormExtraData* formExtraData) { return FormExtraDataManager::Add(form, formExtraData, false); }
+	static bool __fastcall Add(TESForm* form, FormExtraData* formExtraData) noexcept { return FormExtraDataManager::Add(form, formExtraData, false); }
 
-	static void __fastcall RemoveByName(TESForm* form, const char* name) { FormExtraDataManager::RemoveByName(form, name, false); }
-	static void __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData) { FormExtraDataManager::RemoveByPtr(form, formExtraData, false); };
+	static void __fastcall RemoveByName(TESForm* form, const char* name) noexcept { FormExtraDataManager::RemoveByName(form, name, false); }
+	static void __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData) noexcept { FormExtraDataManager::RemoveByPtr(form, formExtraData, false); };
 
-	static FormExtraData* __fastcall Get(const TESForm* form, const char* name) { return FormExtraDataManager::Get(form, name, false); }
+	static FormExtraData* __fastcall Get(const TESForm* form, const char* name) noexcept { return FormExtraDataManager::Get(form, name, false); }
 
-	static UInt32 __fastcall GetAll(const TESForm* form, FormExtraData** outData) { return FormExtraDataManager::GetAll(form, outData, false); }
+	static UInt32 __fastcall GetAll(const TESForm* form, FormExtraData** outData) noexcept { return FormExtraDataManager::GetAll(form, outData, false); }
 };
 
 // Deprecated, kept only for backwards compatibility
@@ -90,27 +90,27 @@ public:
 		FormHeap_Free(this);
 	};
 
-	void IncRefCount() {
+	void IncRefCount() noexcept {
 		InterlockedIncrement(&refCount);
 	}
 
-	void DecRefCount() {
+	void DecRefCount() noexcept {
 		if (InterlockedDecrement(&refCount) == 0) {
 			DeleteThis();
 		}
 	}
 
-	inline const NiFixedString& GetName() const { return name; }
+	inline const NiFixedString& GetName() const noexcept { return name; }
 
 	// Not a thing, used only for template compatibility
-	inline bool OnRemoval(TESForm* removedFrom, UInt32 removalReason) { return true; };
+	inline bool OnRemoval(TESForm* removedFrom, UInt32 removalReason) noexcept { return true; };
 
-	static bool __cdecl Add(TESForm* form, FormExtraData* formExtraData) { return FormExtraDataManager::Add(form, formExtraData, true); }
+	static bool __cdecl Add(TESForm* form, FormExtraData* formExtraData) noexcept { return FormExtraDataManager::Add(form, formExtraData, true); }
 
-	static void __cdecl RemoveByName(TESForm* form, const char* name) { FormExtraDataManager::RemoveByName(form, name, true); }
-	static void __cdecl RemoveByPtr(TESForm* form, FormExtraData* formExtraData) { FormExtraDataManager::RemoveByPtr(form, formExtraData, true); };
+	static void __cdecl RemoveByName(TESForm* form, const char* name) noexcept { FormExtraDataManager::RemoveByName(form, name, true); }
+	static void __cdecl RemoveByPtr(TESForm* form, FormExtraData* formExtraData) noexcept { FormExtraDataManager::RemoveByPtr(form, formExtraData, true); };
 
-	static FormExtraData* __cdecl Get(const TESForm* form, const char* name) { return FormExtraDataManager::Get(form, name, true); }
+	static FormExtraData* __cdecl Get(const TESForm* form, const char* name) noexcept { return FormExtraDataManager::Get(form, name, true); }
 
-	static UInt32 __cdecl GetAll(const TESForm* form, FormExtraData** outData) { return FormExtraDataManager::GetAll(form, outData, true); }
+	static UInt32 __cdecl GetAll(const TESForm* form, FormExtraData** outData) noexcept { return FormExtraDataManager::GetAll(form, outData, true); }
 };
