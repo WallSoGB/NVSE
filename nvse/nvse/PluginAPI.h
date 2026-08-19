@@ -691,9 +691,12 @@ struct NVSEDataInterface
 };
 
 // --- PluginFormExtraData ---
-// extend this class and allocate the pointer to it with the game's heap
-// then use the static methods to add, get, and remove it from a form
-// Class is ref counted, so you can use NiPointer to hold it safely.
+// Extend this class and allocate on game's heap, then use the static methods to add, get, or remove it from a form
+// The class is ref counted, so you must use a NiPointer to hold it safely.
+// 
+// Names are used as unique type identifiers
+// A single form can hold only one reference to an extradata with a given name
+// However, a single extradata instance can be shared across multiple forms
 // 
 // Example class:
 // class MyFormExtraData: public PluginFormExtraData { 
@@ -757,7 +760,7 @@ protected:
 
 public:
 
-	// Destructor with specified deallocator
+	// Destructor with a specified deallocator
 	// Used by NVSE to delete the extra data instance
 	virtual void DeleteThis() {
 		this->~PluginFormExtraData();
@@ -769,7 +772,7 @@ public:
 	// A single form cannot contain more than one extradata of the same name
 	virtual const NiFixedString& GetName() const = 0;
 
-	// Do not change
+	// Do not change, nor override
 	virtual UInt32 GetVersion() const { return kVersion; };
 
 	// Called when extradata is removed from NVSE's map
