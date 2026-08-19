@@ -1075,11 +1075,11 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByName: result = (void*)&LegacyFormExtraData::RemoveByName; break;
 	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByPtr: result = (void*)&LegacyFormExtraData::RemoveByPtr; break;
 
-	case NVSEDataInterface::kNVSEData_FormExtraDataGet: result = (void*)&FormExtraData::Get; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataGetAll: result = (void*)&FormExtraData::GetAll; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataGet: result = (void*)&FormExtraData::Get; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataGetAll: result = (void*)&FormExtraData::GetAll; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
 	}
 	return result;
 }

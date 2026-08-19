@@ -669,11 +669,11 @@ struct NVSEDataInterface
 		kNVSEData_LegacyFormExtraDataRemoveByPtr,
 
 		// Available in GECK, added in v4
-		kNVSEData_FormExtraDataGet,
-		kNVSEData_FormExtraDataGetAll,
-		kNVSEData_FormExtraDataAdd,
-		kNVSEData_FormExtraDataRemoveByName,
-		kNVSEData_FormExtraDataRemoveByPtr,
+		kNVSEData_PluginFormExtraDataGet,
+		kNVSEData_PluginFormExtraDataGetAll,
+		kNVSEData_PluginFormExtraDataAdd,
+		kNVSEData_PluginFormExtraDataRemoveByName,
+		kNVSEData_PluginFormExtraDataRemoveByPtr,
 		
 		kNVSEData_FuncMax,
 	};
@@ -821,7 +821,7 @@ public:
 	[[nodiscard]] 
 	static inline PluginFormExtraData* __fastcall Get(NVSEDataInterface* dataApi, const TESForm* form, const char* name) noexcept
 	{
-		static auto* get = (PluginFormExtraData *(__fastcall*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGet);
+		static auto* get = (PluginFormExtraData *(__fastcall*)(const TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataGet);
 		return get(form, name);
 	}
 
@@ -829,28 +829,28 @@ public:
 	// Returns true if the extra data was added successfully, false if it already exists, or arguments are null.
 	static inline bool __fastcall Add(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData) noexcept
 	{
-		static auto* add = (bool(__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataAdd);
+		static auto* add = (bool(__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd);
 		return add(form, extraData);
 	}
 
 	// Removes extra data from a form by name (case sensitive).
 	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name) noexcept
 	{
-		static auto* remove = (void (__fastcall*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName);
+		static auto* remove = (void (__fastcall*)(TESForm*, const char*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName);
 		remove(form, name);
 	}
 
 	// Removes extra data from a form by pointer to the data.
 	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData) noexcept
 	{
-		static auto* remove = (void (__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr);
+		static auto* remove = (void (__fastcall*)(TESForm*, PluginFormExtraData*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr);
 		remove(form, extraData);
 	}
 
 	// Retrieves all extra data from a form.
 	// First query the data count with an empty outData pointer, then call again with an appropriately sized outData array.
 	static inline UInt32 __fastcall GetAllExtraData(NVSEDataInterface* dataApi, const TESForm* form, NiPointer<PluginFormExtraData>* outData) noexcept {
-		static auto* getAll = (UInt32(__fastcall*)(const TESForm*, NiPointer<PluginFormExtraData>*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_FormExtraDataGetAll);
+		static auto* getAll = (UInt32(__fastcall*)(const TESForm*, NiPointer<PluginFormExtraData>*)) dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataGetAll);
 		return getAll(form, outData);
 	}
 
