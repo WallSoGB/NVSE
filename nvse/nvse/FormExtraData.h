@@ -52,6 +52,8 @@ public:
 
 	virtual UInt32 GetVersion() const { return kVersion; };
 
+	virtual UInt32 GetUserVersion() const { return 1; };
+
 	virtual bool OnRemoval(TESForm* removedFrom, UInt32 removalReason) { return true; };
 
 	virtual UInt32 Reserved0(void*, void*) { return 0; };

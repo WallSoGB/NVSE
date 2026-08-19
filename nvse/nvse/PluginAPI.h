@@ -776,6 +776,10 @@ public:
 	// Do not change, nor override
 	virtual UInt32 GetVersion() const { return kVersion; };
 
+	// Return your own version here
+	// This method is only for other NVSE plugins, NVSE itself does not use it
+	virtual UInt32 GetUserVersion() const { return 1; };
+
 	// Called when extradata is removed from NVSE's map
 	// Extradata's owner, and the reason for the removal are passed through arguments
 	// You can use it to invalidate internal data, while still holding references to your extradata
