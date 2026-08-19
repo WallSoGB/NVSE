@@ -10,8 +10,8 @@ protected:
 
 	static bool __fastcall Add(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
 
-	static void __fastcall RemoveByName(TESForm* form, const char* name, bool legacyMode) noexcept;
-	static void __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
+	static bool __fastcall RemoveByName(TESForm* form, const char* name, bool legacyMode) noexcept;
+	static bool __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept;
 
 	static FormExtraData* __fastcall Get(const TESForm* form, const char* name, bool legacyMode) noexcept;
 
@@ -73,8 +73,8 @@ public:
 
 	static bool __fastcall Add(TESForm* form, FormExtraData* formExtraData) noexcept { return FormExtraDataManager::Add(form, formExtraData, false); }
 
-	static void __fastcall RemoveByName(TESForm* form, const char* name) noexcept { FormExtraDataManager::RemoveByName(form, name, false); }
-	static void __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData) noexcept { FormExtraDataManager::RemoveByPtr(form, formExtraData, false); };
+	static bool __fastcall RemoveByName(TESForm* form, const char* name) noexcept { return FormExtraDataManager::RemoveByName(form, name, false); }
+	static bool __fastcall RemoveByPtr(TESForm* form, FormExtraData* formExtraData) noexcept { return FormExtraDataManager::RemoveByPtr(form, formExtraData, false); };
 
 	static FormExtraData* __fastcall Get(const TESForm* form, const char* name) noexcept { return FormExtraDataManager::Get(form, name, false); }
 

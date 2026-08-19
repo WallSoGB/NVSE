@@ -32,58 +32,76 @@ namespace
 			return true;
 		}
 	
-		void __fastcall RemoveByName(TESForm* form, const char* name) noexcept {
-			std::unique_lock lock(mutex);
+		bool __fastcall RemoveByName(TESForm* form, const char* name) noexcept {
+			NiPointer<T> storedData;
+			{
+				std::unique_lock lock(mutex);
 
-			auto iter = this->find(form);
-			if (iter != this->end()) [[likely]] {
-				auto& dataList = iter->second;
+				auto iter = this->find(form);
+				if (iter != this->end()) [[likely]] {
+					auto& dataList = iter->second;
 
-				std::erase_if(dataList, [&](const NiPointer<T>& data) {
+					std::erase_if(dataList, [&](const NiPointer<T>& data) {
 						if (data && data->GetName() == name) {
-							data->OnRemoval(form, FormExtraData::RemovalReason::kManualRequest);
+							storedData = data;
 							return true;
 						}
 						return false;
-					}
-				);
+						}
+					);
 
-				if (dataList.empty())
-					this->erase(iter);
+					if (dataList.empty())
+						this->erase(iter);
+				}
 			}
+			if (storedData)
+				storedData->OnRemoval(form, FormExtraData::RemovalReason::kManualRequest);
+
+			return storedData;
 		}
 
-		void __fastcall RemoveByPtr(TESForm* form, T* formExtraData) noexcept {
-			std::unique_lock lock(mutex);
+		bool __fastcall RemoveByPtr(TESForm* form, T* formExtraData) noexcept {
+			NiPointer<T> storedData;
+			{
+				std::unique_lock lock(mutex);
 
-			auto iter = this->find(form);
-			if (iter != this->end()) [[likely]] {
-				auto& dataList = iter->second;
+				auto iter = this->find(form);
+				if (iter != this->end()) [[likely]] {
+					auto& dataList = iter->second;
 
-				std::erase_if(dataList, [&](const NiPointer<T>& data) {
+					std::erase_if(dataList, [&](const NiPointer<T>& data) {
 						if (data && data == formExtraData) {
-							data->OnRemoval(form, FormExtraData::RemovalReason::kManualRequest);
+							storedData = data;
 							return true;
 						}
 						return false;
-					}
-				);
+						}
+					);
 
-				if (dataList.empty())
-					this->erase(iter);
+					if (dataList.empty())
+						this->erase(iter);
+				}
 			}
+			if (storedData)
+				storedData->OnRemoval(form, FormExtraData::RemovalReason::kManualRequest);
+
+			return storedData;
 		}
 
 		void __fastcall RemoveForForm(TESForm* form, FormExtraData::RemovalReason reason) noexcept {
-			std::unique_lock lock(mutex);
+			std::vector<NiPointer<T>> storedData;
+			{
+				std::unique_lock lock(mutex);
 
-			auto iter = this->find(form);
-			if (iter != this->end()) {
-				for (const auto& data : iter->second) {
-					if (data)
-						data->OnRemoval(form, reason);
+				auto iter = this->find(form);
+				if (iter != this->end()) {
+					storedData = std::move(iter->second);
+					this->erase(iter);
 				}
-				this->erase(iter);
+			}
+			for (const auto& data : storedData) {
+				if (data)
+					data->OnRemoval(form, reason);
 			}
 		}
 	
@@ -148,29 +166,29 @@ bool __fastcall FormExtraDataManager::Add(TESForm* form, FormExtraData* formExtr
 	}
 }
 
-void __fastcall FormExtraDataManager::RemoveByName(TESForm* form, const char* name, bool legacyMode) noexcept
+bool __fastcall FormExtraDataManager::RemoveByName(TESForm* form, const char* name, bool legacyMode) noexcept
 {
 	if (!form || !name) [[unlikely]]
-		return;
+		return false;
 
 	if (legacyMode) [[unlikely]] {
-		g_legacyFormExtraDataMap.RemoveByName(form, name);
+		return g_legacyFormExtraDataMap.RemoveByName(form, name);
 	}
 	else [[likely]] {
-		g_formExtraDataMap.RemoveByName(form, name);
+		return g_formExtraDataMap.RemoveByName(form, name);
 	}
 }
 
-void __fastcall FormExtraDataManager::RemoveByPtr(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept
+bool __fastcall FormExtraDataManager::RemoveByPtr(TESForm* form, FormExtraData* formExtraData, bool legacyMode) noexcept
 {
 	if (!form || !formExtraData) [[unlikely]]
-		return;
+		return false;
 
 	if (legacyMode) [[unlikely]] {
-		g_legacyFormExtraDataMap.RemoveByPtr(form, reinterpret_cast<LegacyFormExtraData*>(formExtraData));
+		return g_legacyFormExtraDataMap.RemoveByPtr(form, reinterpret_cast<LegacyFormExtraData*>(formExtraData));
 	}
 	else [[likely]] {
-		g_formExtraDataMap.RemoveByPtr(form, formExtraData);
+		return g_formExtraDataMap.RemoveByPtr(form, formExtraData);
 	}
 }
 

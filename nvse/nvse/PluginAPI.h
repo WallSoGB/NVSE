@@ -716,8 +716,8 @@ typedef bool (*_DecompileScript)(Script* script, SInt32 lineNumber, char* buffer
 typedef PluginFormExtraData* (__fastcall* _PluginFormExtraData_Get)(const TESForm* form, const char* name);
 typedef UInt32 (__fastcall* _PluginFormExtraData_GetAll)(const TESForm* form, NiPointer<PluginFormExtraData>* outArray);
 typedef bool(__fastcall* _PluginFormExtraData_Add)(TESForm* form, PluginFormExtraData* formExtraData);
-typedef void(__fastcall* _PluginFormExtraData_RemoveByName)(TESForm* form, const char* name);
-typedef void(__fastcall* _PluginFormExtraData_RemoveByPtr)(TESForm* form, PluginFormExtraData* formExtraData);
+typedef bool(__fastcall* _PluginFormExtraData_RemoveByName)(TESForm* form, const char* name);
+typedef bool(__fastcall* _PluginFormExtraData_RemoveByPtr)(TESForm* form, PluginFormExtraData* formExtraData);
 
 // --- PluginFormExtraData ---
 // Extend this class and allocate on game's heap, then use the static methods to add, get, or remove it from a form
@@ -863,17 +863,17 @@ public:
 	}
 
 	// Removes extra data from a form by name (case sensitive).
-	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name) noexcept
+	static inline bool __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, const char* name) noexcept
 	{
 		static auto* remove = static_cast<_PluginFormExtraData_RemoveByName>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName));
-		remove(form, name);
+		return remove(form, name);
 	}
 
 	// Removes extra data from a form by pointer to the data.
-	static inline void __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData) noexcept
+	static inline bool __fastcall Remove(NVSEDataInterface* dataApi, TESForm* form, PluginFormExtraData* extraData) noexcept
 	{
 		static auto* remove = static_cast<_PluginFormExtraData_RemoveByPtr>(dataApi->GetFunc(NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr));
-		remove(form, extraData);
+		return remove(form, extraData);
 	}
 
 	// Retrieves all extra data from a form.
