@@ -60,7 +60,7 @@ bool Cmd_sv_Destruct_Execute(COMMAND_ARGS)
 	{
 		*result = 0; //store zero in destructed string_var
 		double strID = 0;
-		UInt8 modIndex = 0;
+		const ModInfo* modIndex = 0;
 		bool temp = false;
 		if (ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &temp, opcodeOffsetPtr, &modIndex, thisObj))
 			g_StringMap.Delete(strID);

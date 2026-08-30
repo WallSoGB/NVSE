@@ -980,7 +980,7 @@ ScriptEventList *ScriptEventList::Copy()
 					auto* stringVar = g_StringMap.Get(var->data);
 					if (stringVar)
 					{
-						newVar->data = g_StringMap.Add(m_script->GetModIndex(), stringVar->GetCString(), false, nullptr);
+						newVar->data = g_StringMap.Add(m_script->GetFile(0), stringVar->GetCString(), false, nullptr);
 						AddToGarbageCollection(newEventList, newVar, NVSEVarType::kVarType_String);
 					}
 					else // Sv_Destructed
@@ -1301,7 +1301,7 @@ static bool v_ExtractArgsEx(UInt32 numArgs, ParamInfo *paramInfo, UInt8 *&script
 							if (strVar)
 							{
 #if _DEBUG
-								if (strVar->GetOwningModIndex() != scriptObj->GetModIndex())
+								if (strVar->GetOwningModIndex() != scriptObj->GetFile(0))
 									DebugBreak();
 #endif
 								length = strVar->GetLength();
@@ -2418,7 +2418,7 @@ bool ExtractFormatStringArgs(UInt32 fmtStringPos, char *buffer, ParamInfo *param
 #endif
 
 #if NVSE_CORE
-bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, const UInt32 *opcodeOffsetPtr, UInt8 *outModIndex, TESObjectREFR* refr)
+bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *scriptDataIn, double *outVarData, bool *makeTemporary, const UInt32 *opcodeOffsetPtr, const ModInfo** outModIndex, TESObjectREFR* refr)
 {
 	auto *scriptData = static_cast<UInt8 *>(scriptDataIn) + *opcodeOffsetPtr;
 	auto* backPtr = scriptData - 5;
@@ -2447,14 +2447,14 @@ bool ExtractSetStatementVar(Script *script, ScriptEventList *eventList, void *sc
 		ScriptLocal *var = eventList->GetVariable(scriptVar->varInfo->idx);
 		if (!var)
 			return false;
-		*outModIndex = scriptVar->script->GetModIndex();
+		*outModIndex = scriptVar->script->GetFile(0);
 		*outVarData = var->data;
 		if (!scriptVar->ref || scriptVar->ref == script->quest || scriptVar->ref == refr) // if not an external script
 			AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_String);
 	}
 	else if (auto* globalVar = dynamic_cast<ScriptParsing::GlobalVariableToken*>(statementCtx.toVariable.get()))
 	{
-		*outModIndex = globalVar->global->GetModIndex();
+		*outModIndex = globalVar->global->GetFile(0);
 		*outVarData = globalVar->global->data;
 	}
 	else

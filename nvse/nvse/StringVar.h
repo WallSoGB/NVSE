@@ -20,7 +20,7 @@
 class StringVar
 {
 	std::string data;
-	UInt8		owningModIndex;
+	const ModInfo* owningModIndex;
 public:
 	bool		isFunctionResultCache = false;
 #if _DEBUG
@@ -30,7 +30,7 @@ public:
 	bool temporary = false;
 #endif
 
-	StringVar(const char* in_data, UInt8 modIndex);
+	StringVar(const char* in_data, const ModInfo* modIndex);
 
 	StringVar(const StringVar& other) = delete;
 
@@ -60,13 +60,13 @@ public:
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
 	void Trim();
-	void SetOwningModIndex(UInt8 modIdx) { this->owningModIndex = modIdx; }
+	void SetOwningModIndex(const ModInfo* modIdx) { this->owningModIndex = modIdx; }
 
 	std::string String()					{	return data;	}
 	std::string& StringRef() {return data;}
 	const char*	GetCString();
 	UInt32		GetLength();
-	UInt8		GetOwningModIndex();	
+	const ModInfo* GetOwningModIndex();
 };
 
 enum {
@@ -84,7 +84,7 @@ public:
 	void Load(NVSESerializationInterface* intfc);
 	void Clean();
 	void Reset();
-	UInt32 Add(UInt8 varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
+	UInt32 Add(const ModInfo* varModIndex, const char* data, bool bTemp = false, StringVar** svOut = nullptr);
 	UInt32 Add(StringVar&& moveVar, bool bTemp, StringVar** svOut);
 	static StringVarMap * GetSingleton(void);
 	void Delete(UInt32 varID);

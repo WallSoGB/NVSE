@@ -11,7 +11,7 @@
 
 #include "Core_Serialization.h"
 
-StringVar::StringVar(const char* in_data, UInt8 modIndex)
+StringVar::StringVar(const char* in_data, const ModInfo* modIndex)
 {
 	data = in_data;
 	owningModIndex = modIndex;
@@ -230,7 +230,7 @@ std::string StringVar::SubString(UInt32 startPos, UInt32 numChars)
 		return "";
 }
 
-UInt8 StringVar::GetOwningModIndex()
+const ModInfo* StringVar::GetOwningModIndex()
 {
 	return owningModIndex;
 }
@@ -285,10 +285,10 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 		if (IsTemporary(iter.Key()))	// don't save temp strings
 			continue;
 		StringVar* var = &iter.Get();
-		if (var->GetOwningModIndex() == 0xFF)
+		if (!var->GetOwningModIndex())
 			continue; // do not save function result cache
 		Serialization::OpenRecord('STVR', 0);
-		Serialization::WriteRecord8(var->GetOwningModIndex());
+		Serialization::WriteRecord8(var->GetOwningModIndex()->modIndex);
 		Serialization::WriteRecord32(iter.Key());
 		UInt16 len = var->GetLength();
 		Serialization::WriteRecord16(len);
@@ -359,7 +359,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			Serialization::ReadRecordData(buffer, strLength);
 			buffer[strLength] = 0;
 
-			Insert(stringID, buffer, modIndex);
+			Insert(stringID, buffer, DataHandler::Get()->GetCompiledFile(modIndex));
 #if !_DEBUG
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
@@ -376,7 +376,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	}
 }
 
-UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp, StringVar** svOut)
+UInt32	StringVarMap::Add(const ModInfo* varModIndex, const char* data, bool bTemp, StringVar** svOut)
 {
 	ScopedLock lock(cs);
 	UInt32 varID = GetUnusedID();
@@ -446,7 +446,7 @@ bool IsFunctionResultCacheString(UInt32 strId)
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
-	UInt8 modIndex = 0;
+	const ModInfo* modIndex = 0;
 	bool bTemp = true;
 	StringVar* strVar = NULL;
 	const auto isExpressionEvaluator = ExpressionEvaluator::Active();
@@ -461,7 +461,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	}
 	
 	if (!modIndex)
-		modIndex = scriptObj->GetModIndex();
+		modIndex = scriptObj->GetFile(0);
 
 	if (!isExpressionEvaluator) // set to statement
 	{
@@ -484,7 +484,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 			// optimizations, creating a new string var is slow
 			if (!functionResult.var)
 			{
-				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
+				functionResult.id = static_cast<int>(g_StringMap.Add(nullptr, newValue, false, &functionResult.var));
 				functionResult.var->isFunctionResultCache = true;
 			}
 			else
@@ -553,7 +553,7 @@ namespace PluginAPI
 	{
 		Script* script = (Script*)owningScript;
 		if (script)
-			return g_StringMap.Add(script->GetModIndex(), strVal);
+			return g_StringMap.Add(script->GetFile(0), strVal);
 		else
 			return 0;
 	}
