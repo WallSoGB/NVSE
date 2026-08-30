@@ -968,7 +968,7 @@ ScriptEventList *ScriptEventList::Copy()
 				{
 					if (var->data)
 					{
-						g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetModIndex());
+						g_ArrayMap.AddReference(&newVar->data, var->data, m_script->GetFile(0));
 						AddToGarbageCollection(newEventList, newVar, NVSEVarType::kVarType_Array);
 					}
 					else // ar_Null'ed

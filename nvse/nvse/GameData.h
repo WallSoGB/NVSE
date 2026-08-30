@@ -294,8 +294,8 @@ public:
 	UInt32							unk638;					// 638
 
 	static DataHandler* Get();
-	const ModInfo ** GetActiveModList();		// returns array of modEntry* corresponding to loaded mods sorted by mod index
 	const ModInfo* LookupModByName(const char* modName);
+	ModInfo* GetCompiledFile(UInt32 index) const;
 	UInt8 GetModIndex(const char* modName);
 	UInt8 GetActiveModCount() const;
 	const char* GetNthModName(UInt32 modIndex);

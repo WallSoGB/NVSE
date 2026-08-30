@@ -413,6 +413,14 @@ bool TESForm::SetEditorID(const char* newID)
 #endif
 }
 
+ModInfo* TESForm::GetFile(SInt32 index) const {
+	return ThisStdCall<ModInfo*>(0x484E60, this, index);
+}
+
+void TESForm::SetFile(ModInfo* file) {
+	ThisStdCall<void>(0x484F50, this, file);
+}
+
 #if RUNTIME
 const char* GetFullName(TESForm* baseForm)
 {

@@ -168,6 +168,7 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 		if (nextFormId >> 24 == parentScript->GetModIndex())
 		{
 			scriptLambda->SetRefID(nextFormId, true);
+			scriptLambda->SetFile(parentScript->GetFile(0));
 		}
 		else
 		{

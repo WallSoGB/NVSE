@@ -371,6 +371,9 @@ public:
 
 	bool SetEditorID(const char* newID);
 
+	ModInfo* GetFile(SInt32 index) const;
+	void SetFile(ModInfo* file);
+
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME
 	DEFINE_MEMBER_FN(MarkAsTemporary, void, 0x00484490);	// probably a member of TESForm

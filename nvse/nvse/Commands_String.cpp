@@ -1048,7 +1048,7 @@ bool Cmd_ToNumber_Execute(COMMAND_ARGS)
 bool Cmd_sv_Split_Execute(COMMAND_ARGS)
 {
 	// args: string delims
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);

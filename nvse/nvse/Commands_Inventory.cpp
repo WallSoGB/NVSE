@@ -2860,6 +2860,7 @@ bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 			if (nextFormId >> 24 == scriptObj->GetModIndex())
 			{
 				clonedForm->SetRefID(nextFormId, true);
+				clonedForm->SetFile(scriptObj->GetFile(0));
 				s_clonedFormsWithInheritedModIdx.insert(nextFormId);
 			}
 		}

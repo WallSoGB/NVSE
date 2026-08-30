@@ -28,8 +28,8 @@ ArrayIterLoop::ArrayIterLoop(const ForEachContext* context, Script* script) : m_
 	if (m_iterID)
 	{
 		// clear the iterator var before initializing it
-		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
-		g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetModIndex());
+		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetFile(0));
+		g_ArrayMap.AddReference(&m_valueIterVar.GetScriptLocal()->data, m_iterID, m_script->GetFile(0));
 	}
 
 	Init();
@@ -214,7 +214,7 @@ ArrayIterLoop::~ArrayIterLoop()
 	if (m_iterID)
 	{
 		//g_ArrayMap.RemoveReference(&m_iterID, 0xFF);
-		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetModIndex());
+		g_ArrayMap.RemoveReference(&m_valueIterVar.GetScriptLocal()->data, m_script->GetFile(0));
 	}
 	else {
 		if (m_valueIterVar.IsValid()) {

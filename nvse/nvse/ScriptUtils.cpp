@@ -483,7 +483,7 @@ std::unique_ptr<ScriptToken> Eval_Assign_Global(OperatorType op, ScriptToken *lh
 std::unique_ptr<ScriptToken> Eval_Assign_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
 	ScriptLocal* var = lh->GetScriptLocal();
-	g_ArrayMap.AddReference(&var->data, rh->GetArrayID(), context->script->GetModIndex());
+	g_ArrayMap.AddReference(&var->data, rh->GetArrayID(), context->script->GetFile(0));
 	if (!lh->refIdx)
 		AddToGarbageCollection(context->eventList, var, NVSEVarType::kVarType_Array);
 
@@ -1033,7 +1033,7 @@ std::unique_ptr<ScriptToken> Eval_Subscript_Array_Slice(OperatorType op, ScriptT
 	ArrayVar *srcArr = g_ArrayMap.Get(lh->GetArrayID());
 	if (srcArr)
 	{
-		ArrayVar *sliceArr = srcArr->MakeSlice(rh->GetSlice(), context->script->GetModIndex());
+		ArrayVar *sliceArr = srcArr->MakeSlice(rh->GetSlice(), context->script->GetFile(0));
 		if (sliceArr)
 			return ScriptToken::CreateArray(sliceArr->ID());
 	}
@@ -1219,7 +1219,7 @@ std::unique_ptr<ScriptToken> Eval_In(OperatorType op, ScriptToken *lh, ScriptTok
 	{
 	case Script::eVarType_Array:
 	{
-		const UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetModIndex())->ID();
+		const UInt32 iterID = g_ArrayMap.Create(kDataType_String, false, context->script->GetFile(0))->ID();
 
 		if (auto* localVar = lh->GetScriptLocal())
 		{
@@ -1311,21 +1311,21 @@ std::unique_ptr<ScriptToken> Eval_Box_Number(OperatorType op, ScriptToken *lh, S
 {
 	// the inverse operation of dereference: given a value of any type, wraps it in a single-element array
 	// again, a convenience request
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetFile(0));
 	arr->SetElementNumber(0.0, lh->GetNumber());
 	return ScriptToken::CreateArray(arr->ID());
 }
 
 std::unique_ptr<ScriptToken> Eval_Box_String(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetFile(0));
 	arr->SetElementString(0.0, lh->GetString());
 	return ScriptToken::CreateArray(arr->ID());
 }
 
 std::unique_ptr<ScriptToken> Eval_Box_Form(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetFile(0));
 	TESForm *form = lh->GetTESForm();
 	arr->SetElementFormID(0.0, form ? form->refID : 0);
 	return ScriptToken::CreateArray(arr->ID());
@@ -1333,7 +1333,7 @@ std::unique_ptr<ScriptToken> Eval_Box_Form(OperatorType op, ScriptToken *lh, Scr
 
 std::unique_ptr<ScriptToken> Eval_Box_Array(OperatorType op, ScriptToken *lh, ScriptToken *rh, ExpressionEvaluator *context)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, context->script->GetFile(0));
 	arr->SetElementArray(0.0, lh->GetArrayID());
 	return ScriptToken::CreateArray(arr->ID());
 }

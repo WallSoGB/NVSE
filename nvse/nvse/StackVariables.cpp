@@ -30,7 +30,7 @@ bool VariableStorage::AssignToArray(UInt32 arrID, ScriptEventList* eventList, Sc
 	if (!var) [[unlikely]] {
 		return false;
 		}
-	g_ArrayMap.AddReference(&var->data, arrID, eventList->m_script->GetModIndex());
+	g_ArrayMap.AddReference(&var->data, arrID, eventList->m_script->GetFile(0));
 	AddToGarbageCollection(eventList, var, NVSEVarType::kVarType_Array);
 	return true;
 }

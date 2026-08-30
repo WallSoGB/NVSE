@@ -564,7 +564,7 @@ bool Cmd_IsControl_Execute(COMMAND_ARGS)
 bool Cmd_GetDisabledKeys_Execute(COMMAND_ARGS)
 {
 
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
@@ -589,7 +589,7 @@ bool Cmd_GetPressedKeys_Execute(COMMAND_ARGS)
 	if(!ExtractArgs(EXTRACT_ARGS, &flags))
 		return true;
 
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_Numeric, true, scriptObj->GetFile(0));
 	*result = arr->ID();
 	double arrIndex = 0;
 
