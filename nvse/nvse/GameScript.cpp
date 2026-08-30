@@ -240,6 +240,20 @@ game_unique_ptr<Script> Script::MakeUnique()
 #endif
 }
 
+#if RUNTIME
+// Create our own compiler, as ConsoleManager's compiler gets created after game finishes loading forms
+// This leads to crashes if CompileScript/CompileScriptEx get called before that
+struct ScriptCompilerHolder {
+	ScriptCompilerHolder() {
+		ThisStdCall(0x71B0E0, this);
+	}
+
+	char* compiler;
+};
+
+static ScriptCompilerHolder kCompiler;
+#endif
+
 bool Script::Compile(ScriptBuffer* buffer)
 {
 #if EDITOR
@@ -247,7 +261,7 @@ bool Script::Compile(ScriptBuffer* buffer)
 	auto* scriptCompiler = (void*)0xECFDF8;
 #else
 	constexpr auto address = 0x5AEB90;
-	auto* scriptCompiler = ConsoleManager::GetSingleton()->scriptContext;
+	auto* scriptCompiler = kCompiler.compiler;
 #endif
 	return ThisStdCall<bool>(address, scriptCompiler, this, buffer); // CompileScript
 }
