@@ -640,7 +640,7 @@ UInt32 PeekRecordData(void * buf, UInt32 length)
 
 bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
-	const UInt8 maxIndex = DataHandler::ExtendedPlugins() ? 0xFE : 0xFF;
+	const UInt8 maxIndex = DataHandler::HasSmallPluginSupport() ? 0xFE : 0xFF;
 	UInt8 modID = refID >> 24;
 
 	// pass dynamic ids straight through
@@ -666,8 +666,7 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 
 	if (mod->IsSmall()) {
 		if (outRefID) {
-			*outRefID &= 0xFFF;
-			*outRefID |= 0xFE000000 | (mod->smallIndex << 12);
+			*outRefID |= (refID & 0xFFF) | 0xFE000000 | (mod->smallIndex << 12);
 		}
 	}
 	else {

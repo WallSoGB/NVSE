@@ -33,26 +33,26 @@ void Core_SaveCallback(void * reserved)
 {
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 	DataHandler* dhand = DataHandler::Get();
-	UInt32 version = dhand->HasExtendedPlugins();
-	UInt8 modCount = dhand->modList.GetNormalModCount();
+	UInt32 version = dhand->GetSmallModCount() != 0;
+	UInt8 modCount = dhand->GetNormalModCount();
 
 	// save the mod list
 	intfc->OpenRecord('MODS', version);
 	intfc->WriteRecordData(&modCount, sizeof(modCount));
 	for (UInt32 i = 0; i < modCount; i++)
 	{
-		ModInfo* mod = dhand->modList.GetMod(i);
+		ModInfo* mod = dhand->GetNormalMod(i);
 		UInt16 nameLen = strlen(mod->name);
 		intfc->WriteRecordData(&nameLen, sizeof(nameLen));
 		intfc->WriteRecordData(mod->name, nameLen);
 	}
 
 	if (version) {
-		UInt16 smallModCount = dhand->modList.GetSmallModCount();
+		UInt16 smallModCount = dhand->GetSmallModCount();
 		intfc->WriteRecordData(&smallModCount, sizeof(smallModCount));
 		for (UInt32 i = 0; i < smallModCount; i++)
 		{
-			ModInfo* mod = dhand->modList.GetSmallMod(i);
+			ModInfo* mod = dhand->GetSmallMod(i);
 			UInt16 nameLen = strlen(mod->name);
 			intfc->WriteRecordData(&nameLen, sizeof(nameLen));
 			intfc->WriteRecordData(mod->name, nameLen);
@@ -99,19 +99,8 @@ void Core_LoadCallback(void * reserved)
 
 void Core_NewGameCallback(void * reserved)
 {
-	// reset mod indexes to match current load order
-	if (s_ModFixupTable)
-	{
-		delete[] s_ModFixupTable;
-		s_ModFixupTable = NULL;
-	}
-
 	DataHandler* dhand = DataHandler::Get();
-	UInt8 modCount = dhand->modList.GetNormalModCount();
-
-	s_ModFixupTable = new ModInfo*[modCount];
-	for (UInt32 i = 0; i < modCount; i++)
-		s_ModFixupTable[i] = dhand->modList.GetMod(i);
+	UInt8 modCount = dhand->GetNormalModCount();
 
 	g_ArrayMap.Clean();
 	g_StringMap.Clean();
@@ -203,7 +192,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 		name[nameLen] = 0;
 
 		const ModInfo* mod = DataHandler::Get()->LookupModByName(name);
-		if (mod && mod->modIndex != 0xFF)
+		if (mod && mod->modIndex != 0xFF && !mod->IsSmall())
 			g_modList.push_back(mod);
 		else {
 			g_modList.push_back(nullptr);
@@ -222,7 +211,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 			name[nameLen] = 0;
 
 			const ModInfo* mod = DataHandler::Get()->LookupModByName(name);
-			if (mod && mod->modIndex != 0xFF)
+			if (mod && mod->modIndex != 0xFF && mod->IsSmall())
 				g_smallMods.push_back(mod);
 			else {
 				g_smallMods.push_back(nullptr);

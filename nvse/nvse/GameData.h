@@ -171,7 +171,7 @@ public:
 
 	// In Editor: 430 = ONAM array and 434 ONAM array count. Allocated at 0438
 	
-	bool IsLoaded() const { return true; }
+	bool IsLoaded() const { return modIndex != 0xFF; }
 
 	bool IsSmall() const { return (flags & 0x100) != 0; }
 	bool IsOverlay() const { return (flags & 0x200) != 0; }
@@ -223,7 +223,8 @@ struct ModList
 			ModInfo*	loadedMods[0xFF];
 		};
 	};
-
+private:
+	friend class DataHandler;
 
 	ModInfo* GetMod(UInt8 modIndex) const;
 
@@ -238,6 +239,9 @@ struct ModList
 	UInt32 GetOverlayModCount() const;
 };
 STATIC_ASSERT(sizeof(ModList) == 0x400);
+
+inline constexpr uint32_t HAS_SMALL_PLUGINS_FLAG = 0x40;
+inline constexpr uint32_t HAS_OVERLAY_PLUGINS_FLAG = 0x80;
 
 // 5B8
 class DataHandler
@@ -335,8 +339,12 @@ public:
 
 	static DataHandler* Get();
 
-	bool HasExtendedPlugins() const { return flags & 0xC0; };
-	static bool ExtendedPlugins() { return Get()->HasExtendedPlugins(); }
+	bool SupportsSmallPugins() const { return flags & HAS_SMALL_PLUGINS_FLAG; }
+	bool SupportsOverlayPugins() const { return flags & HAS_OVERLAY_PLUGINS_FLAG; }
+	bool SupportsAllPlugins() const { return (flags & (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG)) == (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG); }
+	static bool HasSmallPluginSupport() { return Get()->SupportsSmallPugins(); }
+	static bool HasOverlayPluginSupport() { return Get()->SupportsOverlayPugins(); }
+	static bool HasExtendedPlugins() { return Get()->flags & (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG); }
 
 	const ModInfo* LookupModByName(const char* modName);
 	UInt8 GetModIndex(const char* modName);
@@ -344,6 +352,15 @@ public:
 	const char* GetNthModName(UInt8 modIndex) const;
 	const char* GetNthModName(UInt8 modIndex, UInt16 smallIndex) const;
 	const char* GetModNameForForm(const TESForm* form) const;
+
+	UInt32 GetNormalModCount() const;
+	ModInfo* GetNormalMod(UInt32 auiIndex) const;
+
+	UInt32 GetSmallModCount() const;
+	ModInfo* GetSmallMod(UInt32 auiIndex) const;
+
+	UInt32 GetOverlayModCount() const;
+	ModInfo* GetOverlayMod(UInt32 auiIndex) const;
 
 	void DisableAssignFormIDs(bool shouldAsssign);
 

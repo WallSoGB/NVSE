@@ -218,7 +218,11 @@ bool Cmd_GetLocalRefIndex_Execute(COMMAND_ARGS)
 
 	if (form)
 	{
-		*result = form->refID & 0x00FFFFFF;
+		ModInfo* mod = form->GetFile(0);
+		if (mod && mod->IsSmall())
+			*result = form->refID & 0x00000FFF;
+		else
+			*result = form->refID & 0x00FFFFFF;
 	}
 
 	return true;

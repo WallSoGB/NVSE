@@ -63,6 +63,10 @@ UInt8 TESForm::GetModIndex() const
 	return (refID >> 24);
 }
 
+UInt16 TESForm::GetSmallModIndex() const {
+	return (refID >> 12) & 0xFFF;
+}
+
 #if RUNTIME
 TESFullName *TESForm::GetFullName() const
 {
@@ -414,7 +418,7 @@ bool TESForm::FormMatches(TESForm* toMatch) const
 
 UInt8 TESForm::GetOverridingModIdx() const
 {
-	ModInfo* info = mods.GetLastItem();
+	ModInfo* info = GetFile(-1);
 	return info ? info->modIndex : 0xFF;
 }
 
@@ -425,6 +429,10 @@ bool TESForm::SetEditorID(const char* newID)
 #else
 	return ThisStdCall<bool>(0x4FB450, this, newID);
 #endif
+}
+
+ModInfo* TESForm::GetFile(SInt32 index) const {
+	return ThisStdCall<ModInfo*>(0x484E60, this, index);
 }
 
 #if RUNTIME
