@@ -2974,6 +2974,9 @@ bool Cmd_GetWeaponItemModEffect_Execute(COMMAND_ARGS)
 	if (!pWeap)
 		return true;
 
+	if (whichMod < 1 || whichMod > 3)
+		return true;
+
 	*result = pWeap->GetItemModEffect(whichMod);
 	if(IsConsoleMode())
 		Console_Print("Item Mod %d Effect: %d", whichMod, pWeap->GetItemModEffect(whichMod));
@@ -2989,6 +2992,9 @@ bool Cmd_GetWeaponItemModValue1_Execute(COMMAND_ARGS)
 	if (!pWeap)
 		return true;
 
+	if (whichMod < 1 || whichMod > 3)
+		return true;
+
 	*result = pWeap->GetItemModValue1(whichMod);
 	if(IsConsoleMode())
 		Console_Print("Item Mod %d Value1: %f", whichMod, pWeap->GetItemModValue1(whichMod));
@@ -3002,6 +3008,9 @@ bool Cmd_GetWeaponItemModValue2_Execute(COMMAND_ARGS)
 	UInt32 whichMod = 0;
 	TESObjectWEAP* pWeap = Extract_IntAndWeapon(PASS_COMMAND_ARGS, whichMod);
 	if (!pWeap)
+		return true;
+
+	if (whichMod < 1 || whichMod > 3)
 		return true;
 
 	*result = pWeap->GetItemModValue2(whichMod);
