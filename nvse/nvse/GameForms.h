@@ -2897,7 +2897,7 @@ public:
 	UInt32				unk378;				// 378
 	UInt32				unk37C;				// 37C
 	UInt32				recharge;			// 380 maybe recharge
-	UInt8				unk384;				// 384
+	bool				isLoopingReload;	// 384
 	UInt8				unk385[3];			// 385
 
 
@@ -3167,9 +3167,12 @@ public:
 	tList<BaseData>	datas;			// 004
 	UInt8			chanceNone;		// 00C
 	UInt8			flags;			// 00D
-	UInt8			fill00E[2];		// 00E
-	UInt32			unk010;			// 010	LVLG
-	ExtraDataList	extraDatas;		// 014
+	TESGlobal*		global;
+	tList<BaseData> scriptAddedObjects;
+
+	static TESLeveledList* GetFormAsLeveledList(TESForm* apForm) {
+		return CdeclCall<TESLeveledList*>(0x487BE0, apForm);
+	};
 };	// 01C
 
 // TESLevCreature (68)

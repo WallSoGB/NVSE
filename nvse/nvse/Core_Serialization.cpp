@@ -59,9 +59,6 @@ void Core_SaveCallback(void * reserved)
 		}
 	}
 
-#ifdef DEBUG
-	SaveCreatedObjects(intfc);
-#endif
 	// prevent arrays from being saved that were supposed to be deleted but are held due to potential future callbacks
 	LambdaManager::ClearSavedDeletedEventLists();
 
@@ -144,11 +141,6 @@ void Core_PreLoadCallback(void * reserved)
 				if (!LoadModList(intfc, version))
 					_MESSAGE("PRELOAD: Error occurred while loading mod list");
 				break;
-#ifdef _DEBUG
-			case 'CROB':
-				LoadCreatedObject(intfc);	// if this fails it is handled internally so no need to check return val
-				break;
-#endif
 			case 'STVS':
 				g_StringMap.Load(intfc);
 				break;

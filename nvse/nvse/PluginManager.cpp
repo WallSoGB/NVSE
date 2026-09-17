@@ -137,7 +137,6 @@ static NVSEMessagingInterface g_NVSEMessagingInterface =
 	PluginManager::Dispatch_Message
 };
 
-#ifdef RUNTIME
 static const NVSEDataInterface g_NVSEDataInterface =
 {
 	NVSEDataInterface::kVersion,
@@ -146,7 +145,6 @@ static const NVSEDataInterface g_NVSEDataInterface =
 	PluginManager::GetData,
 	PluginManager::ClearScriptDataCache
 };
-#endif
 
 #ifdef RUNTIME
 static const NVSEEventManagerInterface g_NVSEEventManagerInterface =
@@ -463,10 +461,10 @@ void * PluginManager::QueryInterface(UInt32 id)
 	case kInterface_Script:
 		result = (void *)&g_NVSEScriptInterface;
 		break;
+#endif
 	case kInterface_Data:
 		result = (void *)&g_NVSEDataInterface;
 		break;
-#endif
 	case kInterface_Messaging:
 		result = (void *)&g_NVSEMessagingInterface;
 		break;
@@ -1037,17 +1035,17 @@ std::vector<std::string> PluginManager::GetLoadErrors() {
 	return g_pluginErrorStrings;
 }
 
-#ifdef RUNTIME
-
 void * PluginManager::GetSingleton(UInt32 singletonID)
 {
 	void * result = NULL;
+#if RUNTIME
 	switch(singletonID)
 	{
 	case NVSEDataInterface::kNVSEData_DIHookControl: result = (void*) (DIHookControl::GetSingletonPtr()); break;
 	case NVSEDataInterface::kNVSEData_ArrayMap: result = (void*) (ArrayVarMap::GetSingleton()); break;
 	case NVSEDataInterface::kNVSEData_StringMap: result = (void*) (StringVarMap::GetSingleton()); break;
 	}
+#endif
 	return result;
 }
 
@@ -1057,6 +1055,7 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	void * result = NULL;
 	switch(funcID)
 	{
+#if RUNTIME
 	case NVSEDataInterface::kNVSEData_InventoryReferenceCreate: result = (void*)&CreateInventoryRef; break;
 	case NVSEDataInterface::kNVSEData_InventoryReferenceGetForRefID: result = (void*)&InventoryReference::GetForRefID; break;
 	case NVSEDataInterface::kNVSEData_InventoryReferenceGetRefBySelf: result = (void*)&InventoryReference::GetRefBySelf; break;	// new static version as the standard GetRef cannot be converted to void*
@@ -1069,20 +1068,28 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_IsScriptLambda: result = (void*)&LambdaManager::IsScriptLambda; break;
 	case NVSEDataInterface::kNVSEData_HasScriptCommand: result = (void*)&ScriptParsing::ScriptContainsCommand; break;
 	case NVSEDataInterface::kNVSEData_DecompileScript: result = (void*)&ScriptParsing::PluginDecompileScript; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataGet: result = (void*)&FormExtraData::Get; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataGetAll: result = (void*)&FormExtraData::GetAll; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
-	case NVSEDataInterface::kNVSEData_FormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
+#endif
+	// Deprecated
+	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataGet: result = (void*)&LegacyFormExtraData::Get; break;
+	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataGetAll: result = (void*)&LegacyFormExtraData::GetAll; break;
+	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataAdd: result = (void*)&LegacyFormExtraData::Add; break;
+	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByName: result = (void*)&LegacyFormExtraData::RemoveByName; break;
+	case NVSEDataInterface::kNVSEData_LegacyFormExtraDataRemoveByPtr: result = (void*)&LegacyFormExtraData::RemoveByPtr; break;
+
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataGet: result = (void*)&FormExtraData::Get; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataGetAll: result = (void*)&FormExtraData::GetAll; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
+	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
 	}
 	return result;
 }
-
 
 void * PluginManager::GetData(UInt32 dataID)
 {
 	static size_t modCount = 0;
 	void * result = NULL;
+#if RUNTIME
 	switch(dataID)
 	{
 	case NVSEDataInterface::kNVSEData_NumPreloadMods: 
@@ -1090,6 +1097,7 @@ void * PluginManager::GetData(UInt32 dataID)
 		result = &modCount;
 		break;
 	}
+#endif
 	return result;
 }
 
@@ -1097,11 +1105,15 @@ extern UnorderedSet<UInt32> s_gameLoadedInformedScripts, s_gameRestartedInformed
 
 void PluginManager::ClearScriptDataCache()
 {
+#if RUNTIME
 	TokenCache::MarkForClear();
 	UserFunctionManager::ClearInfos();
 	Dispatch_Message(0, NVSEMessagingInterface::kMessage_ClearScriptDataCache, NULL, 0, NULL);
 	// LambdaManager::ClearCache(); Instead use LambdaClearForParentScript
+#endif
 }
+
+#if RUNTIME
 
 bool Cmd_IsPluginInstalled_Execute(COMMAND_ARGS)
 {
