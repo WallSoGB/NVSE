@@ -602,7 +602,7 @@ bool Cmd_SetFunctionValue_Execute(COMMAND_ARGS)
 
 bool Cmd_GetUserTime_Execute(COMMAND_ARGS)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetModIndex());
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, scriptObj->GetFile(0));
 	*result = arr->ID();
 
 	SYSTEMTIME localTime;
@@ -627,21 +627,21 @@ class ModLocalDataManager
 	// data is stored as key:value pairs, key is string, value is a formID, number, or string
 
 public:
-	ArrayElement* Get(UInt8 modIndex, const char* key);
-	bool Set(UInt8 modIndex, const char* key, const ArrayElement& data);
-	bool Remove(UInt8 modIndex, const char* key);
-	ArrayID GetAllAsNVSEArray(UInt8 modIndex);
+	ArrayElement* Get(const ModInfo* modIndex, const char* key);
+	bool Set(const ModInfo* modIndex, const char* key, const ArrayElement& data);
+	bool Remove(const ModInfo* modIndex, const char* key);
+	ArrayID GetAllAsNVSEArray(const ModInfo* modIndex);
 
 private:
 	typedef UnorderedMap<char*, ArrayElement> ModLocalData;
-	typedef UnorderedMap<UInt32, ModLocalData> ModLocalDataMap;
+	typedef UnorderedMap<const ModInfo*, ModLocalData> ModLocalDataMap;
 
 	ModLocalDataMap m_data;
 };
 
 ModLocalDataManager s_modDataManager;
 
-ArrayElement* ModLocalDataManager::Get(UInt8 modIndex, const char* key)
+ArrayElement* ModLocalDataManager::Get(const ModInfo* modIndex, const char* key)
 {
 	ModLocalData *modLocData = m_data.GetPtr(modIndex);
 	if (modLocData)
@@ -649,7 +649,7 @@ ArrayElement* ModLocalDataManager::Get(UInt8 modIndex, const char* key)
 	return NULL;
 }
 
-ArrayID ModLocalDataManager::GetAllAsNVSEArray(UInt8 modIndex)
+ArrayID ModLocalDataManager::GetAllAsNVSEArray(const ModInfo* modIndex)
 {
 	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, modIndex);
 	ModLocalData *modLocData = m_data.GetPtr(modIndex);
@@ -659,7 +659,7 @@ ArrayID ModLocalDataManager::GetAllAsNVSEArray(UInt8 modIndex)
 	return arr->ID();
 }
 
-bool ModLocalDataManager::Remove(UInt8 modIndex, const char* key)
+bool ModLocalDataManager::Remove(const ModInfo* modIndex, const char* key)
 {
 	ModLocalData *modLocData = m_data.GetPtr(modIndex);
 	if (modLocData)
@@ -675,7 +675,7 @@ bool ModLocalDataManager::Remove(UInt8 modIndex, const char* key)
 	return false;
 }
 
-bool ModLocalDataManager::Set(UInt8 modIndex, const char* key, const ArrayElement& data)
+bool ModLocalDataManager::Set(const ModInfo* modIndex, const char* key, const ArrayElement& data)
 {
 	if (*key)
 	{
@@ -693,7 +693,7 @@ bool Cmd_SetModLocalData_Execute(COMMAND_ARGS)
 	if (eval.ExtractArgs() && eval.NumArgs() == 2 && eval.Arg(0)->CanConvertTo(kTokenType_String))
 	{
 		ArrayElement elem;
-		if (BasicTokenToElem(eval.Arg(1), elem) && (elem.DataType() != kDataType_Array) && s_modDataManager.Set(scriptObj->GetModIndex(), eval.Arg(0)->GetString(), elem))
+		if (BasicTokenToElem(eval.Arg(1), elem) && (elem.DataType() != kDataType_Array) && s_modDataManager.Set(scriptObj->GetFile(0), eval.Arg(0)->GetString(), elem))
 			*result = 1;
 	}
 	return true;
@@ -702,7 +702,7 @@ bool Cmd_SetModLocalData_Execute(COMMAND_ARGS)
 bool Cmd_RemoveModLocalData_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String) && s_modDataManager.Remove(scriptObj->GetModIndex(), eval.Arg(0)->GetString()))
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String) && s_modDataManager.Remove(scriptObj->GetFile(0), eval.Arg(0)->GetString()))
 		*result = 1;
 	else *result = 0;
 	return true;
@@ -716,7 +716,7 @@ bool Cmd_GetModLocalData_Execute(COMMAND_ARGS)
 
 	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String))
 	{
-		ArrayElement *data = s_modDataManager.Get(scriptObj->GetModIndex(), eval.Arg(0)->GetString());
+		ArrayElement *data = s_modDataManager.Get(scriptObj->GetFile(0), eval.Arg(0)->GetString());
 		if (data)
 		{
 			switch (data->DataType())
@@ -744,7 +744,7 @@ bool Cmd_GetModLocalData_Execute(COMMAND_ARGS)
 bool Cmd_ModLocalDataExists_Execute(COMMAND_ARGS)
 {
 	ExpressionEvaluator eval(PASS_COMMAND_ARGS);
-	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String) && s_modDataManager.Get(scriptObj->GetModIndex(), eval.Arg(0)->GetString()))
+	if (eval.ExtractArgs() && eval.NumArgs() == 1 && eval.Arg(0)->CanConvertTo(kTokenType_String) && s_modDataManager.Get(scriptObj->GetFile(0), eval.Arg(0)->GetString()))
 		*result = 1;
 	else *result = 0;
 	return true;
@@ -752,7 +752,7 @@ bool Cmd_ModLocalDataExists_Execute(COMMAND_ARGS)
 
 bool Cmd_GetAllModLocalData_Execute(COMMAND_ARGS)
 {
-	*result = s_modDataManager.GetAllAsNVSEArray(scriptObj->GetModIndex());
+	*result = s_modDataManager.GetAllAsNVSEArray(scriptObj->GetFile(0));
 	return true;
 }
 

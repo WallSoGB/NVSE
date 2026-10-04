@@ -346,8 +346,12 @@ public:
 	static bool HasOverlayPluginSupport() { return Get()->SupportsOverlayPugins(); }
 	static bool HasExtendedPlugins() { return Get()->flags & (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG); }
 
-	const ModInfo* LookupModByName(const char* modName);
-	UInt8 GetModIndex(const char* modName);
+	ModInfo* GetModByFormID(UInt32 formID) const;
+
+	ModInfo* GetMod(UInt32 auiIndex) const;
+
+	const ModInfo* LookupModByName(const char* modName) const;
+	UInt8 GetModIndex(const char* modName) const;
 	UInt8 GetActiveModCount() const;
 	const char* GetNthModName(UInt8 modIndex) const;
 	const char* GetNthModName(UInt8 modIndex, UInt16 smallIndex) const;

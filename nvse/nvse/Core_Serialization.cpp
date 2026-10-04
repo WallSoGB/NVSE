@@ -188,7 +188,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 			g_modList.push_back(mod);
 		else {
 			g_modList.push_back(nullptr);
-			_MESSAGE("PRELOAD: Small mod %s not found in mod list", name);
+			_MESSAGE("PRELOAD: Mod %s not found in mod list", name);
 		}
 
 		g_modsLoaded.emplace_back(name);

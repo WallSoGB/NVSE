@@ -653,11 +653,15 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 
 	const ModInfo* mod = nullptr;
 	if (modID != maxIndex) {
-		mod = g_modList.at(modID);
+		if (modID < g_modList.size())
+			mod = g_modList.at(modID);
 	}
 	else if (modID == 0xFE) {
-		mod = g_smallMods.at((refID >> 12) & 0xFFF);
+		UInt16 smallModID = (refID >> 12) & 0xFFF;
+		if (smallModID < g_smallMods.size())
+			mod = g_smallMods.at(smallModID);
 	}
+
 	if (modID == 0xFF) 
 		return false;	// unloaded
 

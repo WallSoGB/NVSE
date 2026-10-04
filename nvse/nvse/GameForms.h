@@ -375,6 +375,7 @@ public:
 	bool SetEditorID(const char* newID);
 
 	ModInfo* GetFile(SInt32 index) const;
+	void SetFile(ModInfo* file);
 
 	MEMBER_FN_PREFIX(TESForm);
 #if RUNTIME

@@ -17,13 +17,27 @@ DataHandler* DataHandler::Get()
 
 #endif
 
-const ModInfo * DataHandler::LookupModByName(const char * modName)
-{
+ModInfo* DataHandler::GetModByFormID(UInt32 formID) const {
+	UInt32 modIndex = (formID >> 24) & 0xFF;
+	if (SupportsSmallPugins() && modIndex == 0xFE) {
+		modIndex = formID & 0xFFFFF000;
+	}
+	return GetMod(modIndex);
+}
+
+ModInfo* DataHandler::GetMod(UInt32 auiIndex) const {
+#if RUNTIME
+	return ThisStdCall<ModInfo*>(0x465010, this, auiIndex);
+#else
+	return ThisStdCall<ModInfo*>(0x4CDFA0, this, auiIndex);
+#endif
+}
+
+const ModInfo * DataHandler::LookupModByName(const char * modName) const {
 	return ThisStdCall<const ModInfo*>(0x462F40, this, modName);
 }
 
-UInt8 DataHandler::GetModIndex(const char* modName)
-{
+UInt8 DataHandler::GetModIndex(const char* modName) const {
 	const ModInfo* mod = LookupModByName(modName);
 	if (mod)
 		return mod->modIndex;
@@ -46,21 +60,17 @@ const char* DataHandler::GetNthModName(UInt8 modIndex) const {
 }
 
 const char* DataHandler::GetNthModName(UInt8 modIndex, UInt16 smallIndex) const {
-	ModInfo* modInfo;
-	if (SupportsSmallPugins() && modIndex == 0xFE) {
-		modInfo = GetSmallMod(smallIndex);
-		if (modInfo)
-			return modInfo->name;
-	}
-	
-	if (modList.GetNormalModCount() <= modIndex || modIndex == 0xFF)
+	UInt32 finalModIndex;
+	if (SupportsSmallPugins() && modIndex == 0xFE)
+		finalModIndex = smallIndex << 12 | modIndex << 24;
+	else
+		finalModIndex = modIndex;
+
+	const ModInfo* mod = GetMod(finalModIndex);
+	if (mod)
+		return mod->name;
+	else
 		return "";
-
-	modInfo = modList.GetMod(modIndex);
-	if (modInfo)
-		return modInfo->name;
-
-	return "";
 }
 
 const char* DataHandler::GetModNameForForm(const TESForm* form) const {

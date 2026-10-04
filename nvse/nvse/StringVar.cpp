@@ -11,14 +11,14 @@
 
 #include "Core_Serialization.h"
 
-StringVar::StringVar(const char* in_data, UInt8 modIndex)
+StringVar::StringVar(const char* in_data, const ModInfo* modIndex)
 {
 	data = in_data;
-	owningModIndex = modIndex;
+	owningMod = modIndex;
 }
 
 StringVar::StringVar(StringVar&& other) noexcept: data(std::move(other.data)),
-                                                  owningModIndex(other.owningModIndex)
+                                                  owningMod(other.owningMod)
 {
 }
 
@@ -230,9 +230,9 @@ std::string StringVar::SubString(UInt32 startPos, UInt32 numChars)
 		return "";
 }
 
-UInt8 StringVar::GetOwningModIndex()
+const ModInfo* StringVar::GetOwningMod()
 {
-	return owningModIndex;
+	return owningMod;
 }
 
 UInt32 StringVar::GetCharType(char ch)
@@ -278,24 +278,30 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-	Serialization::OpenRecord('STVS', 0);
+	UInt32 version = kPreESLVersion;
+	if (DataHandler::HasSmallPluginSupport())
+		version = kVersion;
+
+	Serialization::OpenRecord('STVS', version);
 
 	for (auto iter = vars.Begin(); !iter.End(); ++iter)
 	{
 		if (IsTemporary(iter.Key()))	// don't save temp strings
 			continue;
 		StringVar* var = &iter.Get();
-		if (var->GetOwningModIndex() == 0xFF)
+		if (!var->GetOwningMod())
 			continue; // do not save function result cache
-		Serialization::OpenRecord('STVR', 0);
-		Serialization::WriteRecord8(var->GetOwningModIndex());
+		Serialization::OpenRecord('STVR', version);
+		Serialization::WriteRecord8(var->GetOwningMod()->modIndex);
+		if (version > kPreESLVersion)
+			Serialization::WriteRecord16(var->GetOwningMod()->smallIndex);
 		Serialization::WriteRecord32(iter.Key());
 		UInt16 len = var->GetLength();
 		Serialization::WriteRecord16(len);
 		Serialization::WriteRecordData(var->GetCString(), len);
 	}
 
-	Serialization::OpenRecord('STVE', 0);
+	Serialization::OpenRecord('STVE', version);
 }
 
 #if _DEBUG
@@ -305,12 +311,15 @@ extern std::set<std::string> g_modsWithCosaveVars;
 void StringVarMap::Load(NVSESerializationInterface* intfc)
 {
 	_MESSAGE("Loading strings");
-	UInt32 type, length, version, stringID, tempRefID;
+	UInt32 type, length, version, stringID;
 	UInt16 strLength;
+	UInt16 smallModIndex;
 	UInt8 modIndex;
-	char buffer[kMaxMessageLength];
+	char stringBuffer[kMaxMessageLength];
 
 	Clean();
+
+	const bool supportsESL = DataHandler::HasSmallPluginSupport();
 
 	// do some basic checking to weed out potential bloat caused by scripts creating large
 	// numbers of string variables
@@ -322,6 +331,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	bool bContinue = true;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
+		UInt32 tempRefID = 0;
 		switch (type)
 		{
 		case 'STVE':			//end of block
@@ -338,6 +348,8 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		case 'STVR':
 			modIndex = Serialization::ReadRecord8();
+			if (version > kPreESLVersion)
+				smallModIndex = Serialization::ReadRecord16();
 #if _DEBUG
 			g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
 			modVarCounts[modIndex] += 1;
@@ -346,7 +358,14 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 				g_cosaveWarning.modIndices.insert(modIndex);
 			}
 #endif
-			if (!Serialization::ResolveRefID(modIndex << 24, &tempRefID) || modIndex == 0xFF)
+			if (modIndex == 0xFF)
+				continue;
+
+			tempRefID = modIndex << 24;
+			if (version > kPreESLVersion && supportsESL && modIndex == 0xFE)
+				tempRefID |= smallModIndex << 12;
+
+			if (!Serialization::ResolveRefID(tempRefID, &tempRefID))
 			{
 				// owning mod is no longer loaded so discard
 				continue;
@@ -356,11 +375,14 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			stringID = Serialization::ReadRecord32();
 			strLength = Serialization::ReadRecord16();
 			
-			Serialization::ReadRecordData(buffer, strLength);
-			buffer[strLength] = 0;
+			Serialization::ReadRecordData(stringBuffer, strLength);
+			stringBuffer[strLength] = 0;
 
-			Insert(stringID, buffer, modIndex);
+			Insert(stringID, stringBuffer, DataHandler::Get()->GetModByFormID(tempRefID));
 #if !_DEBUG
+			if (supportsESL && modIndex == 0xFE)
+				break;
+
 			modVarCounts[modIndex] += 1;
 			if (modVarCounts[modIndex] == varCountThreshold) {
 				exceededMods.Insert(modIndex);
@@ -376,7 +398,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	}
 }
 
-UInt32	StringVarMap::Add(UInt8 varModIndex, const char* data, bool bTemp, StringVar** svOut)
+UInt32	StringVarMap::Add(const ModInfo* varModIndex, const char* data, bool bTemp, StringVar** svOut)
 {
 	ScopedLock lock(cs);
 	UInt32 varID = GetUnusedID();
@@ -446,7 +468,7 @@ bool IsFunctionResultCacheString(UInt32 strId)
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
-	UInt8 modIndex = 0;
+	const ModInfo* modIndex = 0;
 	bool bTemp = true;
 	StringVar* strVar = NULL;
 	const auto isExpressionEvaluator = ExpressionEvaluator::Active();
@@ -461,7 +483,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	}
 	
 	if (!modIndex)
-		modIndex = scriptObj->GetModIndex();
+		modIndex = scriptObj->GetFile(0);
 
 	if (!isExpressionEvaluator) // set to statement
 	{
@@ -484,7 +506,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 			// optimizations, creating a new string var is slow
 			if (!functionResult.var)
 			{
-				functionResult.id = static_cast<int>(g_StringMap.Add(0xFF, newValue, false, &functionResult.var));
+				functionResult.id = static_cast<int>(g_StringMap.Add(nullptr, newValue, false, &functionResult.var));
 				functionResult.var->isFunctionResultCache = true;
 			}
 			else
@@ -553,7 +575,7 @@ namespace PluginAPI
 	{
 		Script* script = (Script*)owningScript;
 		if (script)
-			return g_StringMap.Add(script->GetModIndex(), strVal);
+			return g_StringMap.Add(script->GetFile(0), strVal);
 		else
 			return 0;
 	}
