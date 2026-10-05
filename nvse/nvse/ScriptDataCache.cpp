@@ -219,22 +219,22 @@ namespace ScriptDataCache
 
             // Build mod name table with mod index -> table index mapping
             std::vector<const char*> modNames;
-            std::unordered_map<UInt8, UInt16> modIndexToTableIndex;
+            std::unordered_map<const ModInfo*, UInt16> modToTableIndex;
 
             for (const auto* ref : refList)
             {
                 if (!ref || !ref->form)
                     continue;
 
-                const auto modIndex = ref->form->GetModIndex();
-                if (modIndex == 0xFF || modIndexToTableIndex.contains(modIndex))
+                const auto mod = ref->form->GetFile(0);
+                if (!mod || modToTableIndex.contains(mod))
                     continue;
 
-                const char* modName = dataHandler ? dataHandler->GetNthModName(modIndex) : nullptr;
+                const char* modName = mod->name;
                 if (!modName)
                     continue;
 
-                modIndexToTableIndex[modIndex] = static_cast<UInt16>(modNames.size());
+                modToTableIndex[mod] = static_cast<UInt16>(modNames.size());
                 modNames.push_back(modName);
             }
 
@@ -261,13 +261,16 @@ namespace ScriptDataCache
                     if (!ref->form)
                         return {0xFFFF, 0};
 
-                    const auto modIndex = ref->form->GetModIndex();
-                    if (modIndex == 0xFF)
+                    const auto mod = ref->form->GetFile(0);
+                    if (!mod)
                         return {0xFFFE, ref->form->refID};
 
-                    const auto it = modIndexToTableIndex.find(modIndex);
-                    if (it == modIndexToTableIndex.end())
+                    const auto it = modToTableIndex.find(mod);
+                    if (it == modToTableIndex.end())
                         return {0xFFFF, 0};
+
+                    if (ref->form->GetModIndex() == 0xFE && DataHandler::HasSmallPluginSupport())
+                        return { it->second, ref->form->refID & 0x00000FFF };
 
                     return {it->second, ref->form->refID & 0x00FFFFFF};
                 }();
@@ -353,14 +356,15 @@ namespace ScriptDataCache
                 ptr += nameLen;
             }
 
-            std::vector<UInt8> modIndices;
+            std::unordered_map<UInt32, const ModInfo*> modIndices;
             modIndices.reserve(modNames.size());
             auto* dataHandler = DataHandler::Get();
 
+            UInt16 stringIndex = 0;
             for (const auto& name : modNames)
             {
-                UInt8 modIndex = dataHandler ? dataHandler->GetModIndex(name.c_str()) : 0xFF;
-                modIndices.push_back(modIndex);
+                const ModInfo* mod = dataHandler->GetModByName(name.c_str());
+                modIndices[stringIndex++] = mod;
             }
 
             UInt32 refCount;
@@ -404,11 +408,18 @@ namespace ScriptDataCache
                     if (serialized.modNameIndex >= modIndices.size())
                         return {nullptr};
 
-                    UInt8 currentModIndex = modIndices[serialized.modNameIndex];
-                    if (currentModIndex == 0xFF)
+                    const ModInfo* currentMod = modIndices[serialized.modNameIndex];
+                    if (!currentMod)
                         return {nullptr};
 
-                    UInt32 reconstructedRefID = (static_cast<UInt32>(currentModIndex) << 24) | (serialized.baseFormID & 0x00FFFFFF);
+                    UInt32 reconstructedRefID = (static_cast<UInt32>(currentMod->modIndex) << 24);
+                    if (currentMod->IsSmall() && DataHandler::HasSmallPluginSupport()) {
+                        reconstructedRefID |= (serialized.baseFormID & 0x00000FFF) | (static_cast<UInt32>(currentMod->smallIndex) << 12);
+                    }
+                    else {
+                        reconstructedRefID |= (serialized.baseFormID & 0x00FFFFFF);
+                    }
+                   
                     if (const auto pResolved = LookupFormByID(reconstructedRefID)) {
                         return { pResolved };
                     }
