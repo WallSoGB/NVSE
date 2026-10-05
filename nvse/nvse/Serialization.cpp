@@ -640,8 +640,7 @@ UInt32 PeekRecordData(void * buf, UInt32 length)
 
 bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
-	const UInt8 maxIndex = DataHandler::HasSmallPluginSupport() ? 0xFE : 0xFF;
-	UInt8 modID = refID >> 24;
+	const UInt32 modID = (refID >> 24) & 0xFF;
 
 	// pass dynamic ids straight through
 	if (modID == 0xFF)
@@ -651,32 +650,30 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return true;
 	}
 
+	const UInt8 maxFullIndex = DataHandler::HasSmallPluginSupport() ? 0xFE : 0xFF;
+
 	const ModInfo* mod = nullptr;
-	if (modID != maxIndex) {
+	if (modID != maxFullIndex) {
 		if (modID < g_modList.size())
 			mod = g_modList.at(modID);
 	}
 	else if (modID == 0xFE) {
-		UInt16 smallModID = (refID >> 12) & 0xFFF;
+		const UInt32 smallModID = (refID >> 12) & 0xFFF;
 		if (smallModID < g_smallMods.size())
 			mod = g_smallMods.at(smallModID);
 	}
 
-	if (modID == 0xFF) 
-		return false;	// unloaded
-
 	if (!mod)
 		return false;
 
-	if (mod->IsSmall()) {
-		if (outRefID) {
-			*outRefID |= (refID & 0xFFF) | 0xFE000000 | (mod->smallIndex << 12);
+	if (outRefID) {
+		if (mod->IsSmall()) {
+			*outRefID = (refID & 0x00000FFF) | 0xFE000000 | (mod->smallIndex << 12);
 		}
-	}
-	else {
-		// fixup ID, success
-		if (outRefID)
-			*outRefID = (mod->modIndex << 24) | (refID & 0x00FFFFFF);
+		else {
+			// fixup ID, success
+			*outRefID = (refID & 0x00FFFFFF) | (mod->modIndex << 24);
+		}
 	}
 
 	return true;
