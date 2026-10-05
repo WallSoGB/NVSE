@@ -164,17 +164,28 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 	}
 	else
 	{
-		const auto nextFormId = GetNextFreeFormID(parentScript->refID);
-		if (nextFormId >> 24 == parentScript->GetModIndex())
+		ModInfo* mod = parentScript->GetFile(0);
+		if (mod) [[likely]]
 		{
-			scriptLambda->SetRefID(nextFormId, true);
-			scriptLambda->SetFile(parentScript->GetFile(0));
+			UInt32 startingNextFormID = mod->header.nextObectID;
+			if (mod->IsSmall() && DataHandler::HasSmallPluginSupport())
+				startingNextFormID |= mod->smallIndex << 12;
+			const auto nextFormId = GetNextFreeFormID(startingNextFormID);
+			if (nextFormId >> 24 == parentScript->GetModIndex()) [[likely]]
+			{
+				scriptLambda->SetRefID(nextFormId, true);
+			}
+			else [[unlikely]]
+			{
+				assert(false);
+				_ERROR("CreateLambdaScript: Failed to assign a proper formID for the lambda. This should probably never happen.");
+				scriptLambda->Delete();
+				return nullptr;
+			}
 		}
-		else
+		else [[unlikely]]
 		{
-			_ERROR("CreateLambdaScript: Failed to assign a proper formID for the lambda. This should probably never happen.");
-			scriptLambda->Delete();
-			return nullptr;
+			assert(false);
 		}
 	}
 	g_lambdaScriptPosMap[key] = scriptLambda;

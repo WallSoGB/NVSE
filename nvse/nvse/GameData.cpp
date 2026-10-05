@@ -120,6 +120,10 @@ void DataHandler::DisableAssignFormIDs(bool shouldAsssign)
 	ThisStdCall(0x464D30, this, shouldAsssign);
 }
 
+bool DataHandler::IsFormIDInUse(UInt32 formID) const {
+	return ThisStdCall<bool>(0x469760, this, formID);
+}
+
 struct IsModLoaded
 {
 	bool Accept(ModInfo* pModInfo) const {
@@ -139,6 +143,10 @@ ModInfo::ModInfo() {
 ModInfo::~ModInfo() {
 	//
 };
+
+ModInfo* ModInfo::GetFileForTempID(UInt32 formID) {
+	return CdeclCall<ModInfo*>(0x474060, formID);
+}
 
 ModInfo* ModList::GetMod(UInt8 modIndex) const {
 	if (modIndex >= GetNormalModCount())

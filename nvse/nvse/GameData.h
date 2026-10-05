@@ -176,6 +176,8 @@ public:
 	bool IsSmall() const { return (flags & 0x100) != 0; }
 	bool IsOverlay() const { return (flags & 0x200) != 0; }
 
+	static ModInfo* GetFileForTempID(UInt32 formID);
+
 #if RUNTIME
 	/*** used by TESForm::LoadForm() among others ***/
 	MEMBER_FN_PREFIX(ModInfo);
@@ -367,6 +369,8 @@ public:
 	ModInfo* GetOverlayMod(UInt32 auiIndex) const;
 
 	void DisableAssignFormIDs(bool shouldAsssign);
+
+	bool IsFormIDInUse(UInt32 formID) const;
 
 	MEMBER_FN_PREFIX(DataHandler);
 #if RUNTIME

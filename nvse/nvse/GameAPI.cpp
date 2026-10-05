@@ -2948,9 +2948,11 @@ UInt32 GetNextFreeFormID()
 
 UInt32 GetNextFreeFormID(UInt32 formId)
 {
-	while (LookupFormByID(++formId))
-		;
-	return formId;
+	UInt32 newFormID = formId;
+	while (DataHandler::Get()->IsFormIDInUse(newFormID) || ModInfo::GetFileForTempID(newFormID)) {
+		++newFormID;
+	}
+	return newFormID;
 }
 
 Script *GetReferencedQuestScript(UInt32 refIdx, ScriptEventList *baseEventList)
