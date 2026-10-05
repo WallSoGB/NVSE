@@ -1920,7 +1920,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 	UInt32 lastIndexRead = 0;
 
 	double numKey;
-	std::unordered_map<UInt8, UInt32> varCountMap;
+	std::unordered_map<const ModInfo*, UInt32> varCountMap;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
 	{
 		switch (type)
@@ -1940,13 +1940,12 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				if (modIndex == 0xFF)
 					continue;
 
-				UInt32 tempRefID = 0;
-				tempRefID = modIndex << 24;
+				UInt32 tempModFormID = modIndex << 24;
 				if (version > kPreESLVersion && supportsESL && modIndex == 0xFE)
-					tempRefID |= smallModIndex << 12;
+					tempModFormID |= smallModIndex << 12;
 
 				const ModInfo* mod = nullptr;
-				if (!Serialization::ResolveRefID(tempRefID, &tempRefID)) {
+				if (!Serialization::ResolveRefID(tempModFormID, &tempModFormID)) {
 					// owning mod was removed, but there may be references to it from other mods
 					// assign ownership to the first mod which refers to it and is still loaded
 					// if no loaded mods refer to it, discard
@@ -1955,7 +1954,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						"Mod owning array was removed from load order; will attempt to assign ownership to a referring mod.");
 				}
 				else {
-					mod = DataHandler::Get()->GetModByFormID(tempRefID);
+					mod = DataHandler::Get()->GetModByFormID(tempModFormID);
 				}
 
 				arrayID = Serialization::ReadRecord32();
@@ -1987,38 +1986,29 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 #if _DEBUG
 							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
 #endif
-							UInt32 tempRefID = 0;
-							tempRefID |= curModIndex << 24;
+							UInt32 tempRefID = curModIndex << 24;
 							if (version > kPreESLVersion && curModIndex == 0xFE)
 								tempRefID |= curModSmallIndex << 12;
 
-							if (!mod)
+							const bool resolvedFormID = Serialization::ResolveRefID(tempRefID, &tempRefID);
+
+							const ModInfo* newResolvedMod = DataHandler::Get()->GetModByFormID(tempRefID);
+							if (!mod && newResolvedMod)
 							{
-								if (Serialization::ResolveRefID(tempRefID, &tempRefID))
-								{
-									mod = DataHandler::Get()->GetModByFormID(tempRefID);
-									_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod %s",
-									         arrayID, mod->name);
-								}
+								mod = newResolvedMod;
+								_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod %s",
+										 arrayID, mod ? mod->name : "Runtime");
 							}
 
-							if (Serialization::ResolveRefID(tempRefID, &tempRefID))
-								modArray[refIdx++] = DataHandler::Get()->GetModByFormID(tempRefID);
+							if (newResolvedMod) {
+								modArray[refIdx++] = newResolvedMod;
 
-							bool resolveRefID = true;
-#if !_DEBUG
-							tempRefID = 0;
-							tempRefID |= curModIndex << 24;
-							if (version > kPreESLVersion && curModIndex == 0xFE)
-								tempRefID |= curModSmallIndex << 12;
-							resolveRefID = Serialization::ResolveRefID(tempRefID, nullptr);
-#endif
-							if (g_showFileSizeWarning && resolveRefID)
-							{
-								auto& numVars = varCountMap[curModIndex];
-								numVars++;
-								if (numVars > 2000)
-									g_cosaveWarning.modIndices.insert(curModIndex);
+								if (g_showFileSizeWarning) {
+									auto& numVars = varCountMap[newResolvedMod];
+									numVars++;
+									if (numVars > 2000)
+										g_cosaveWarning.modIndices.insert(curModIndex);
+								}
 							}
 						}
 

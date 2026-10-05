@@ -10,6 +10,7 @@
 #include "GameData.h"
 #include "GameObjects.h"
 #include "Hooks_Other.h"
+#include <assert.h>
 
 using ScriptLambda = Script;
 using FormID = UInt32;

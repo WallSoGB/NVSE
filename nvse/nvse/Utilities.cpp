@@ -957,7 +957,7 @@ void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 
 	const auto* scriptName = script ? script->GetName() : nullptr; // JohnnyGuitarNVSE allows this
 	auto refId = script ? script->refID : 0;
-	const auto modIdx = script ? script->GetModIndex() : 0;
+	const auto mod = script ? script->GetFile(0) : nullptr;
 	if (script && LambdaManager::IsScriptLambda(script))
 	{
 		Script* parentScript;
@@ -977,7 +977,7 @@ void vShowRuntimeError(Script* script, const char* fmt, va_list args)
 		sprintf_s(errorHeader, sizeof(errorHeader), "Error in script %08X in mod %s\n%s", refId, modName, errorMsg);
 	}
 
-	if (g_warnScriptErrors && g_myMods.contains(modIdx) && g_warnedScripts.Insert(refId))
+	if (g_warnScriptErrors && g_myMods.contains(mod) && g_warnedScripts.Insert(refId))
 	{
 		char message[512];
 		snprintf(message, sizeof(message), "%s: Script error (see console print)", GetModName(script));

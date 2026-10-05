@@ -1920,8 +1920,10 @@ bool DispatchUserDefinedEvent(const char* eventName, Script* sender, UInt32 args
 	arr->SetElementString("eventName", eventName);
 	if (senderName == nullptr)
 	{
-		if (sender)
-			senderName = DataHandler::Get()->GetNthModName(sender->GetModIndex());
+		if (sender) {
+			const ModInfo* mod = sender->GetFile(0);
+			senderName = mod ? mod->name : "Runtime";
+		}
 		else
 			senderName = "NVSE";
 	}
