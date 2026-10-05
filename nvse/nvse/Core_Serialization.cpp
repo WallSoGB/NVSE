@@ -183,7 +183,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 		intfc->ReadRecordData(&name, nameLen);
 		name[nameLen] = 0;
 
-		const ModInfo* mod = DataHandler::Get()->LookupModByName(name);
+		const ModInfo* mod = DataHandler::Get()->GetModByName(name);
 		if (mod && mod->modIndex != 0xFF && !mod->IsSmall())
 			g_modList.push_back(mod);
 		else {
@@ -202,7 +202,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 			intfc->ReadRecordData(&name, nameLen);
 			name[nameLen] = 0;
 
-			const ModInfo* mod = DataHandler::Get()->LookupModByName(name);
+			const ModInfo* mod = DataHandler::Get()->GetModByName(name);
 			if (mod && mod->modIndex != 0xFF && mod->IsSmall())
 				g_smallMods.push_back(mod);
 			else {

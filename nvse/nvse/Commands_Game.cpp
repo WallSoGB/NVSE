@@ -148,7 +148,7 @@ bool Cmd_IsModLoaded_Execute(COMMAND_ARGS)
 	if (!ExtractArgs(EXTRACT_ARGS, &modName))
 		return true;
 
-	const ModInfo* pModInfo = DataHandler::Get()->LookupModByName(modName);
+	const ModInfo* pModInfo = DataHandler::Get()->GetModByName(modName);
 	if (pModInfo && pModInfo->IsLoaded()) {
 		*result = 1;
 	}

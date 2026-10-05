@@ -352,7 +352,7 @@ public:
 
 	ModInfo* GetMod(UInt32 auiIndex) const;
 
-	const ModInfo* LookupModByName(const char* modName) const;
+	const ModInfo* GetModByName(const char* modName) const;
 	UInt8 GetModIndex(const char* modName) const;
 	UInt8 GetActiveModCount() const;
 	const char* GetNthModName(UInt8 modIndex) const;

@@ -33,12 +33,12 @@ ModInfo* DataHandler::GetMod(UInt32 auiIndex) const {
 #endif
 }
 
-const ModInfo * DataHandler::LookupModByName(const char * modName) const {
+const ModInfo * DataHandler::GetModByName(const char * modName) const {
 	return ThisStdCall<const ModInfo*>(0x462F40, this, modName);
 }
 
 UInt8 DataHandler::GetModIndex(const char* modName) const {
-	const ModInfo* mod = LookupModByName(modName);
+	const ModInfo* mod = GetModByName(modName);
 	if (mod)
 		return mod->modIndex;
 
@@ -76,7 +76,7 @@ const char* DataHandler::GetNthModName(UInt8 modIndex, UInt16 smallIndex) const 
 const char* DataHandler::GetModNameForForm(const TESForm* form) const {
 	const UInt8 index = form->GetModIndex();
 	if (SupportsSmallPugins() && index == 0xFE) {
-		const UInt16 smallIndex = (form->refID & 0xFFF000) >> 12;
+		const UInt16 smallIndex = (form->refID >> 12) & 0xFFF;
 		return GetNthModName(0xFE, smallIndex);
 	}
 
