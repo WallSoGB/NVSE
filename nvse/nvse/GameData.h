@@ -161,7 +161,7 @@ public:
 	UInt32								unk404;				// 404
 	UInt32								unk408;				// 408
 	UInt8								modIndex;			// 40C init to 0xFF
-	UInt16								smallIndex;
+	UInt16								secondIndex;
 	String								author;				// 410
 	String								description;		// 418
 	void								* dataBuf;			// 420 
@@ -175,6 +175,8 @@ public:
 
 	bool IsSmall() const { return (flags & 0x100) != 0; }
 	bool IsOverlay() const { return (flags & 0x200) != 0; }
+	bool IsMedium() const { return (flags & 0x400) != 0; }
+	bool IsSpecial() const { return (flags & 0x700) != 0; }
 
 	static ModInfo* GetFileForTempID(UInt32 formID);
 
@@ -217,7 +219,8 @@ struct ModList
 			ModArray	normalFiles;
 			ModArray	smallFiles;
 			ModArray	overlayFiles;
-			UInt32		padding[0xF4];
+			ModArray	mediumFiles;
+			UInt32		padding[0xE4];
 		};
 
 		struct {
@@ -232,18 +235,21 @@ private:
 
 	ModInfo* GetSmallMod(UInt16 modIndex) const;
 
+	ModInfo* GetMediumMod(UInt16 modIndex) const;
+
 	ModInfo* GetOverlayMod(UInt32 modIndex) const;
 
 	UInt32 GetNormalModCount() const;
 
 	UInt32 GetSmallModCount() const;
 
+	UInt32 GetMediumModCount() const;
+
 	UInt32 GetOverlayModCount() const;
 };
 STATIC_ASSERT(sizeof(ModList) == 0x400);
 
-inline constexpr uint32_t HAS_SMALL_PLUGINS_FLAG = 0x40;
-inline constexpr uint32_t HAS_OVERLAY_PLUGINS_FLAG = 0x80;
+inline constexpr uint32_t HAS_NEW_PLUGIN_TYPES = 0x80;
 
 // 5B8
 class DataHandler
@@ -341,12 +347,8 @@ public:
 
 	static DataHandler* Get();
 
-	bool SupportsSmallPugins() const { return flags & HAS_SMALL_PLUGINS_FLAG; }
-	bool SupportsOverlayPugins() const { return flags & HAS_OVERLAY_PLUGINS_FLAG; }
-	bool SupportsAllPlugins() const { return (flags & (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG)) == (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG); }
-	static bool HasSmallPluginSupport() { return Get()->SupportsSmallPugins(); }
-	static bool HasOverlayPluginSupport() { return Get()->SupportsOverlayPugins(); }
-	static bool HasExtendedPlugins() { return Get()->flags & (HAS_SMALL_PLUGINS_FLAG | HAS_OVERLAY_PLUGINS_FLAG); }
+	bool SupportsNewFileTypes() const { return flags & HAS_NEW_PLUGIN_TYPES; }
+	static bool HasNewFileTypeSupport() { return Get()->SupportsNewFileTypes(); }
 
 	ModInfo* GetModByFormID(UInt32 formID) const;
 
@@ -364,6 +366,9 @@ public:
 
 	UInt32 GetSmallModCount() const;
 	ModInfo* GetSmallMod(UInt32 auiIndex) const;
+
+	UInt32 GetMediumModCount() const;
+	ModInfo* GetMediumMod(UInt32 auiIndex) const;
 
 	UInt32 GetOverlayModCount() const;
 	ModInfo* GetOverlayMod(UInt32 auiIndex) const;

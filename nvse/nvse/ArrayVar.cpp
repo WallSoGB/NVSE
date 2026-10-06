@@ -1805,7 +1805,7 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 	Clean();
 
 	UInt32 version = kPreESLVersion;
-	if (DataHandler::HasSmallPluginSupport())
+	if (DataHandler::HasNewFileTypeSupport())
 		version = kVersion;
 
 	Serialization::OpenRecord('ARVS', version);
@@ -1833,7 +1833,7 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 		Serialization::OpenRecord('ARVR', version);
 		Serialization::WriteRecord8(pVar->m_owningMod->modIndex);
 		if (version > kPreESLVersion)
-			Serialization::WriteRecord16(pVar->m_owningMod->smallIndex);
+			Serialization::WriteRecord16(pVar->m_owningMod->secondIndex);
 		Serialization::WriteRecord32(iter.Key());
 		Serialization::WriteRecord8(keyType);
 		Serialization::WriteRecord8(pVar->m_bPacked);
@@ -1841,7 +1841,7 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 		if (version > kPreESLVersion) {
 			for (const ModInfo* mod : pVar->m_refs) {
 				Serialization::WriteRecord8(mod->modIndex);
-				Serialization::WriteRecord16(mod->smallIndex);
+				Serialization::WriteRecord16(mod->secondIndex);
 			}
 		}
 		else {
@@ -1905,7 +1905,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 	Clean(); // clean up any vars queued for garbage collection
 
-	const bool supportsESL = DataHandler::HasSmallPluginSupport();
+	const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
 
 	UInt32 type, length, version, arrayID, numElements;
 	UInt16 strLength;
@@ -1941,8 +1941,12 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 					continue;
 
 				UInt32 tempModFormID = modIndex << 24;
-				if (version > kPreESLVersion && supportsESL && modIndex == 0xFE)
-					tempModFormID |= smallModIndex << 12;
+				if (version > kPreESLVersion && hasNewFileTypes) {
+					if (modIndex == 0xFE)
+						tempModFormID |= smallModIndex << 12;
+					else if (modIndex == 0xFD)
+						tempModFormID |= smallModIndex << 16;
+				}
 
 				const ModInfo* mod = nullptr;
 				if (!Serialization::ResolveRefID(tempModFormID, &tempModFormID)) {
@@ -1987,9 +1991,12 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
 #endif
 							UInt32 tempRefID = curModIndex << 24;
-							if (version > kPreESLVersion && curModIndex == 0xFE)
-								tempRefID |= curModSmallIndex << 12;
-
+							if (version > kPreESLVersion) {
+								if (curModIndex == 0xFE)
+									tempRefID |= curModSmallIndex << 12;
+								else if (curModIndex == 0xFD)
+									tempRefID |= curModSmallIndex << 16;
+							}
 							const bool resolvedFormID = Serialization::ResolveRefID(tempRefID, &tempRefID);
 
 							const ModInfo* newResolvedMod = DataHandler::Get()->GetModByFormID(tempRefID);

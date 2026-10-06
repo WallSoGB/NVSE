@@ -2863,8 +2863,6 @@ bool CloneForm_Execute(COMMAND_ARGS, bool bPersist)
 			ModInfo* mod = scriptObj->GetFile(0);
 			if (mod) [[likely]] {
 				UInt32 startingNextFormID = mod->header.nextObectID;
-				if (mod->IsSmall() && DataHandler::HasSmallPluginSupport())
-					startingNextFormID |= mod->smallIndex << 12;
 				const auto nextFormId = GetNextFreeFormID(startingNextFormID);
 				if (nextFormId >> 24 == scriptObj->GetModIndex()) [[likely]]
 				{

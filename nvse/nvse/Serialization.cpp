@@ -650,25 +650,33 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return true;
 	}
 
-	const UInt8 maxFullIndex = DataHandler::HasSmallPluginSupport() ? 0xFE : 0xFF;
-
+	const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
 	const ModInfo* mod = nullptr;
-	if (modID != maxFullIndex) {
-		if (modID < g_modList.size())
-			mod = g_modList.at(modID);
+	if (hasNewFileTypes && modID >= 0xFD) {
+		if (modID == 0xFD) {
+			const UInt32 mediumModID = (refID >> 16) & 0xFF;
+			if (mediumModID < g_mediumMods.size())
+				mod = g_mediumMods.at(mediumModID);
+		}
+		else if (modID == 0xFE) {
+			const UInt32 smallModID = (refID >> 12) & 0xFFF;
+			if (smallModID < g_smallMods.size())
+				mod = g_smallMods.at(smallModID);
+		}
 	}
-	else if (modID == 0xFE) {
-		const UInt32 smallModID = (refID >> 12) & 0xFFF;
-		if (smallModID < g_smallMods.size())
-			mod = g_smallMods.at(smallModID);
+	else if (modID < g_modList.size()) {
+		mod = g_modList.at(modID);
 	}
 
 	if (!mod)
 		return false;
 
 	if (outRefID) {
-		if (mod->IsSmall()) {
-			*outRefID = (refID & 0x00000FFF) | 0xFE000000 | (mod->smallIndex << 12);
+		if (hasNewFileTypes && mod->IsSpecial()) {
+			if (mod->IsSmall())
+				*outRefID = (refID & 0x00000FFF) | 0xFE000000 | (mod->secondIndex << 12);
+			else if (mod->IsMedium())
+				*outRefID = (refID & 0x0000FFFF) | 0xFD000000 | (mod->secondIndex << 16);
 		}
 		else {
 			// fixup ID, success

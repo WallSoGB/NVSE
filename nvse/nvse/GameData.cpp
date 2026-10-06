@@ -19,9 +19,8 @@ DataHandler* DataHandler::Get()
 
 ModInfo* DataHandler::GetModByFormID(UInt32 formID) const {
 	UInt32 modIndex = (formID >> 24) & 0xFF;
-	if (SupportsSmallPugins() && modIndex == 0xFE) {
-		modIndex = formID & 0xFFFFF000;
-	}
+	if (SupportsNewFileTypes() && modIndex >= 0xFD)
+		modIndex = formID;
 	return GetMod(modIndex);
 }
 
@@ -46,8 +45,8 @@ UInt8 DataHandler::GetModIndex(const char* modName) const {
 }
 
 const char* DataHandler::GetNthModName(UInt8 modIndex) const {
-	if (SupportsSmallPugins() && modIndex == 0xFE)
-		return "Small Mod";
+	if (SupportsNewFileTypes() && modIndex > 0xFD)
+		return "";
 
 	if (modList.GetNormalModCount() <= modIndex || modIndex == 0xFF)
 		return "";
@@ -60,11 +59,13 @@ const char* DataHandler::GetNthModName(UInt8 modIndex) const {
 }
 
 const char* DataHandler::GetNthModName(UInt8 modIndex, UInt16 smallIndex) const {
-	UInt32 finalModIndex;
-	if (SupportsSmallPugins() && modIndex == 0xFE)
-		finalModIndex = smallIndex << 12 | modIndex << 24;
-	else
-		finalModIndex = modIndex;
+	UInt32 finalModIndex = modIndex;
+	if (SupportsNewFileTypes()) {
+		if (modIndex == 0xFE)
+			finalModIndex = modIndex << 24 | smallIndex << 12;
+		else if (modIndex == 0xFD)
+			finalModIndex = modIndex << 24 | smallIndex << 16;
+	}
 
 	const ModInfo* mod = GetMod(finalModIndex);
 	if (mod)
@@ -75,12 +76,16 @@ const char* DataHandler::GetNthModName(UInt8 modIndex, UInt16 smallIndex) const 
 
 const char* DataHandler::GetModNameForForm(const TESForm* form) const {
 	const UInt8 index = form->GetModIndex();
-	if (SupportsSmallPugins() && index == 0xFE) {
-		const UInt16 smallIndex = (form->refID >> 12) & 0xFFF;
-		return GetNthModName(0xFE, smallIndex);
-	}
+	const ModInfo* mod = nullptr;
+	if (SupportsNewFileTypes() && index >= 0xFD)
+		mod = GetMod(form->refID);
+	else
+		mod = GetMod(index);
 
-	return GetNthModName(index);
+	if (mod)
+		return mod->name;
+	else
+		return "";
 }
 
 UInt32 DataHandler::GetNormalModCount() const {
@@ -92,25 +97,37 @@ ModInfo* DataHandler::GetNormalMod(UInt32 auiIndex) const {
 }
 
 UInt32 DataHandler::GetSmallModCount() const {
-	if (SupportsSmallPugins())
+	if (SupportsNewFileTypes())
 		return modList.GetSmallModCount();
 	return 0;
 }
 
 ModInfo* DataHandler::GetSmallMod(UInt32 auiIndex) const {
-	if (SupportsSmallPugins())
+	if (SupportsNewFileTypes())
 		return modList.GetSmallMod(auiIndex);
 	return nullptr;
 }
 
+UInt32 DataHandler::GetMediumModCount() const {
+	if (SupportsNewFileTypes())
+		return modList.GetMediumModCount();
+	return 0;
+}
+
+ModInfo* DataHandler::GetMediumMod(UInt32 auiIndex) const {
+	if (SupportsNewFileTypes())
+		return modList.GetMediumMod(auiIndex);
+	return nullptr;
+}
+
 UInt32 DataHandler::GetOverlayModCount() const {
-	if (SupportsOverlayPugins())
+	if (SupportsNewFileTypes())
 		return modList.GetOverlayModCount();
 	return 0;
 }
 
 ModInfo* DataHandler::GetOverlayMod(UInt32 auiIndex) const {
-	if (SupportsOverlayPugins())
+	if (SupportsNewFileTypes())
 		return modList.GetOverlayMod(auiIndex);
 	return nullptr;
 }
@@ -152,7 +169,7 @@ ModInfo* ModList::GetMod(UInt8 modIndex) const {
 	if (modIndex >= GetNormalModCount())
 		return nullptr;
 
-	if (DataHandler::HasExtendedPlugins())
+	if (DataHandler::HasNewFileTypeSupport())
 		return normalFiles.GetAt(modIndex);
 
 	return loadedMods[modIndex];
@@ -165,6 +182,13 @@ ModInfo* ModList::GetSmallMod(UInt16 modIndex) const {
 	return smallFiles.GetAt(modIndex);
 }
 
+ModInfo* ModList::GetMediumMod(UInt16 modIndex) const {
+	if (modIndex >= GetMediumModCount())
+		return nullptr;
+
+	return mediumFiles.GetAt(modIndex);
+}
+
 ModInfo* ModList::GetOverlayMod(UInt32 modIndex) const {
 	if (modIndex >= GetOverlayModCount())
 		return nullptr;
@@ -173,7 +197,7 @@ ModInfo* ModList::GetOverlayMod(UInt32 modIndex) const {
 }
 
 UInt32 ModList::GetNormalModCount() const {
-	if (DataHandler::HasExtendedPlugins())
+	if (DataHandler::HasNewFileTypeSupport())
 		return normalFiles.GetSize();
 
 	return loadedModCount;
@@ -181,6 +205,10 @@ UInt32 ModList::GetNormalModCount() const {
 
 UInt32 ModList::GetSmallModCount() const {
 	return smallFiles.GetSize();
+}
+
+UInt32 ModList::GetMediumModCount() const {
+	return mediumFiles.GetSize();
 }
 
 UInt32 ModList::GetOverlayModCount() const {

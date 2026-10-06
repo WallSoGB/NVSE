@@ -32,8 +32,10 @@ bool LoadModList(NVSESerializationInterface* nvse, UInt32 version);	// reads sav
 void Core_SaveCallback(void * reserved)
 {
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
-	DataHandler* dhand = DataHandler::Get();
-	UInt32 version = dhand->GetSmallModCount() != 0;
+	const DataHandler* dhand = DataHandler::Get();
+	UInt32 version = 0;
+	if (dhand->GetSmallModCount() || dhand->GetMediumModCount())
+		version = 1;
 	UInt8 modCount = dhand->GetNormalModCount();
 
 	// save the mod list
@@ -53,6 +55,16 @@ void Core_SaveCallback(void * reserved)
 		for (UInt32 i = 0; i < smallModCount; i++)
 		{
 			ModInfo* mod = dhand->GetSmallMod(i);
+			UInt16 nameLen = strlen(mod->name);
+			intfc->WriteRecordData(&nameLen, sizeof(nameLen));
+			intfc->WriteRecordData(mod->name, nameLen);
+		}
+
+		UInt8 mediumModCount = dhand->GetMediumModCount();
+		intfc->WriteRecordData(&mediumModCount, sizeof(mediumModCount));
+		for (UInt32 i = 0; i < mediumModCount; i++)
+		{
+			ModInfo* mod = dhand->GetMediumMod(i);
 			UInt16 nameLen = strlen(mod->name);
 			intfc->WriteRecordData(&nameLen, sizeof(nameLen));
 			intfc->WriteRecordData(mod->name, nameLen);
@@ -111,6 +123,7 @@ void Core_PreLoadCallback(void * reserved)
 	// reset refID fixup table. if save made prior to 0019, this will remain empty
 	g_modList.clear();	// no need to zero out table - unloaded mods will be set to 0xFF below
 	g_smallMods.clear();
+	g_mediumMods.clear();
 
 	NVSESerializationInterface* intfc = &g_NVSESerializationInterface;
 
@@ -165,6 +178,7 @@ void Init_CoreSerialization_Callbacks()
 
 std::vector<const class ModInfo*> g_modList;
 std::vector<const class ModInfo*> g_smallMods;
+std::vector<const class ModInfo*> g_mediumMods;
 
 std::vector<std::string> g_modsLoaded;
 
@@ -184,7 +198,7 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 		name[nameLen] = 0;
 
 		const ModInfo* mod = DataHandler::Get()->GetModByName(name);
-		if (mod && mod->modIndex != 0xFF && !mod->IsSmall())
+		if (mod && mod->modIndex != 0xFF && !mod->IsSpecial())
 			g_modList.push_back(mod);
 		else {
 			g_modList.push_back(nullptr);
@@ -208,6 +222,22 @@ bool ReadModListFromCoSave(NVSESerializationInterface * intfc, UInt32 version)
 			else {
 				g_smallMods.push_back(nullptr);
 				_MESSAGE("PRELOAD: Small mod %s not found in mod list", name);
+			}
+		}
+
+		UInt8 mediumModCount = 0;
+		intfc->ReadRecordData(&mediumModCount, sizeof(mediumModCount));
+		for (UInt32 i = 0; i < mediumModCount; i++) {
+			intfc->ReadRecordData(&nameLen, sizeof(nameLen));
+			intfc->ReadRecordData(&name, nameLen);
+			name[nameLen] = 0;
+
+			const ModInfo* mod = DataHandler::Get()->GetModByName(name);
+			if (mod && mod->modIndex != 0xFF && mod->IsMedium())
+				g_mediumMods.push_back(mod);
+			else {
+				g_mediumMods.push_back(nullptr);
+				_MESSAGE("PRELOAD: Medium mod %s not found in mod list", name);
 			}
 		}
 	}

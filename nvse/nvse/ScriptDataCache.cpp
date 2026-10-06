@@ -248,6 +248,8 @@ namespace ScriptDataCache
 
             WriteData(buf, refList.Count());
 
+            const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
+
             for (const auto* ref : refList)
             {
                 if (!ref) continue;
@@ -269,8 +271,13 @@ namespace ScriptDataCache
                     if (it == modToTableIndex.end())
                         return {0xFFFF, 0};
 
-                    if (ref->form->GetModIndex() == 0xFE && DataHandler::HasSmallPluginSupport())
-                        return { it->second, ref->form->refID & 0x00000FFF };
+                    if (hasNewFileTypes) {
+                        const UInt8 index = ref->form->GetModIndex();
+                        if (index == 0xFE)
+                            return { it->second, ref->form->refID & 0x00000FFF };
+                        else if (index == 0xFD)
+                            return { it->second, ref->form->refID & 0x0000FFFF };
+                    }
 
                     return {it->second, ref->form->refID & 0x00FFFFFF};
                 }();
@@ -413,8 +420,11 @@ namespace ScriptDataCache
                         return {nullptr};
 
                     UInt32 reconstructedRefID = (static_cast<UInt32>(currentMod->modIndex) << 24);
-                    if (currentMod->IsSmall() && DataHandler::HasSmallPluginSupport()) {
-                        reconstructedRefID |= (serialized.baseFormID & 0x00000FFF) | (static_cast<UInt32>(currentMod->smallIndex) << 12);
+                    if (DataHandler::HasNewFileTypeSupport() && currentMod->IsSpecial()) {
+                        if (currentMod->IsSmall())
+                            reconstructedRefID |= (serialized.baseFormID & 0x00000FFF) | (static_cast<UInt32>(currentMod->secondIndex) << 12);
+                        else if (currentMod->IsMedium())
+                            reconstructedRefID |= (serialized.baseFormID & 0x0000FFFF) | (static_cast<UInt32>(currentMod->secondIndex) << 16);
                     }
                     else {
                         reconstructedRefID |= (serialized.baseFormID & 0x00FFFFFF);

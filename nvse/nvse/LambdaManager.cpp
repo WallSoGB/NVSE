@@ -169,8 +169,6 @@ Script* LambdaManager::CreateLambdaScript(UInt8* position, const ScriptData& scr
 		if (mod) [[likely]]
 		{
 			UInt32 startingNextFormID = mod->header.nextObectID;
-			if (mod->IsSmall() && DataHandler::HasSmallPluginSupport())
-				startingNextFormID |= mod->smallIndex << 12;
 			const auto nextFormId = GetNextFreeFormID(startingNextFormID);
 			if (nextFormId >> 24 == parentScript->GetModIndex()) [[likely]]
 			{

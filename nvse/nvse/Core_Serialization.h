@@ -2,6 +2,7 @@
 
 extern std::vector<const class ModInfo*> g_modList;
 extern std::vector<const class ModInfo*> g_smallMods;
+extern std::vector<const class ModInfo*> g_mediumMods;
 extern std::vector<std::string> g_modsLoaded;
 
 void Init_CoreSerialization_Callbacks();

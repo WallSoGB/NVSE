@@ -279,7 +279,7 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 	Clean();
 
 	UInt32 version = kPreESLVersion;
-	if (DataHandler::HasSmallPluginSupport())
+	if (DataHandler::HasNewFileTypeSupport())
 		version = kVersion;
 
 	Serialization::OpenRecord('STVS', version);
@@ -294,7 +294,7 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 		Serialization::OpenRecord('STVR', version);
 		Serialization::WriteRecord8(var->GetOwningMod()->modIndex);
 		if (version > kPreESLVersion)
-			Serialization::WriteRecord16(var->GetOwningMod()->smallIndex);
+			Serialization::WriteRecord16(var->GetOwningMod()->secondIndex);
 		Serialization::WriteRecord32(iter.Key());
 		UInt16 len = var->GetLength();
 		Serialization::WriteRecord16(len);
@@ -319,7 +319,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 
 	Clean();
 
-	const bool supportsESL = DataHandler::HasSmallPluginSupport();
+	const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
 
 	// do some basic checking to weed out potential bloat caused by scripts creating large
 	// numbers of string variables
@@ -362,8 +362,12 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 				continue;
 
 			tempRefID = modIndex << 24;
-			if (version > kPreESLVersion && supportsESL && modIndex == 0xFE)
-				tempRefID |= smallModIndex << 12;
+			if (version > kPreESLVersion && hasNewFileTypes) {
+				if (modIndex == 0xFE)
+					tempRefID |= smallModIndex << 12;
+				else if (modIndex == 0xFD)
+					tempRefID |= smallModIndex << 16;
+			}
 
 			if (!Serialization::ResolveRefID(tempRefID, &tempRefID))
 			{
@@ -380,7 +384,7 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 
 			Insert(stringID, stringBuffer, DataHandler::Get()->GetModByFormID(tempRefID));
 #if !_DEBUG
-			if (supportsESL && modIndex == 0xFE)
+			if (hasNewFileTypes && modIndex >= 0xFD)
 				break;
 
 			modVarCounts[modIndex] += 1;
