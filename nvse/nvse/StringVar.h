@@ -8,6 +8,7 @@
 //	STVS - empty chunk indicating start of strings block
 //		STVR
 //			UInt8 modIndex
+//			UInt16 secondaryModIndex (added in ver 2)
 //			UInt32 stringID
 //			UInt16 length
 //			char data[length]
@@ -30,7 +31,7 @@ public:
 	bool temporary = false;
 #endif
 
-	StringVar(const char* in_data, const ModInfo* modIndex);
+	StringVar(const char* in_data, const ModInfo* mod);
 
 	StringVar(const StringVar& other) = delete;
 
@@ -60,7 +61,7 @@ public:
 	char		At(UInt32 charPos);
 	static UInt32	GetCharType(char ch);
 	void Trim();
-	void SetOwningModIndex(const ModInfo* modIdx) { this->owningMod = modIdx; }
+	void SetOwningModIndex(const ModInfo* mod) { this->owningMod = mod; }
 
 	std::string String()					{	return data;	}
 	std::string& StringRef() {return data;}

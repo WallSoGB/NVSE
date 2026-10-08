@@ -513,7 +513,7 @@ void SelfOwningArrayElement::Unset()
 const ModInfo* __fastcall GetArrayOwningModIndex(ArrayID arrID)
 {
 	ArrayVar* arr = g_ArrayMap.Get(arrID);
-	return arr ? arr->OwningModIndex() : 0;
+	return arr ? arr->OwningMod() : 0;
 }
 
 ArrayKey::ArrayKey()
@@ -595,8 +595,8 @@ thread_local ArrayKey s_arrNumKey(kDataType_Numeric), s_arrStrKey(kDataType_Stri
 #if _DEBUG && 0
 MemoryLeakDebugCollector<ArrayVar> s_arrayDebugCollector;
 #endif
-ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, const ModInfo* modIndex) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
-                                                                    m_owningMod(modIndex)
+ArrayVar::ArrayVar(UInt32 _keyType, bool _packed, const ModInfo* mod) : m_ID(0), m_keyType(_keyType), m_bPacked(_packed),
+                                                                    m_owningMod(mod)
 {
 	if (m_keyType == kDataType_String)
 		m_elements.m_type = kContainer_StringMap;
@@ -1181,9 +1181,9 @@ bool ArrayVar::Insert(UInt32 atIndex, ArrayID rangeID)
 	return true;
 }
 
-ArrayVar* ArrayVar::GetKeys(const ModInfo* modIndex)
+ArrayVar* ArrayVar::GetKeys(const ModInfo* mod)
 {
-	ArrayVar* keysArr = g_ArrayMap.Create(kDataType_Numeric, true, modIndex);
+	ArrayVar* keysArr = g_ArrayMap.Create(kDataType_Numeric, true, mod);
 	double currKey = 0;
 
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
@@ -1198,9 +1198,9 @@ ArrayVar* ArrayVar::GetKeys(const ModInfo* modIndex)
 	return keysArr;
 }
 
-ArrayVar* ArrayVar::Copy(const ModInfo* modIndex, bool bDeepCopy)
+ArrayVar* ArrayVar::Copy(const ModInfo* mod, bool bDeepCopy)
 {
-	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
+	ArrayVar* copyArr = g_ArrayMap.Create(m_keyType, m_bPacked, mod);
 	const ArrayElement* arrElem;
 	for (ArrayIterator iter = m_elements.begin(); !iter.End(); ++iter)
 	{
@@ -1212,7 +1212,7 @@ ArrayVar* ArrayVar::Copy(const ModInfo* modIndex, bool bDeepCopy)
 			ArrayVar* innerArr = g_ArrayMap.Get(arrElem->m_data.arrID);
 			if (innerArr)
 			{
-				ArrayVar* innerCopy = innerArr->Copy(modIndex, true);
+				ArrayVar* innerCopy = innerArr->Copy(mod, true);
 				if (tempKey().KeyType() == kDataType_Numeric)
 				{
 					if (copyArr->SetElementArray(tempKey().key.num, innerCopy->ID()))
@@ -1229,9 +1229,9 @@ ArrayVar* ArrayVar::Copy(const ModInfo* modIndex, bool bDeepCopy)
 	return copyArr;
 }
 
-ArrayVar* ArrayVar::MakeSlice(const Slice* slice, const ModInfo* modIndex)
+ArrayVar* ArrayVar::MakeSlice(const Slice* slice, const ModInfo* mod)
 {
-	ArrayVar* newVar = g_ArrayMap.Create(m_keyType, m_bPacked, modIndex);
+	ArrayVar* newVar = g_ArrayMap.Create(m_keyType, m_bPacked, mod);
 
 	if (Empty() || (slice->bIsString != (m_keyType == kDataType_String)))
 		return newVar;
@@ -1718,9 +1718,9 @@ std::vector<ArrayVar*> ArrayVarMap::GetArraysContainingArrayID(ArrayID id)
 	return out;
 }
 #endif
-ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, const ModInfo* modIndex, UInt32 numRefs, const ModInfo** refs)
+ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, const ModInfo* mod, UInt32 numRefs, const ModInfo** refs)
 {
-	ArrayVar* var = VarMap::Insert(varID, keyType, packed, modIndex);
+	ArrayVar* var = VarMap::Insert(varID, keyType, packed, mod);
 	ScopedLock lock(var->m_cs);
 	availableIDs.Erase(varID);
 	var->m_ID = varID;
@@ -1731,10 +1731,10 @@ ArrayVar* ArrayVarMap::Add(UInt32 varID, UInt32 keyType, bool packed, const ModI
 	return var;
 }
 
-ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, const ModInfo* modIndex)
+ArrayVar* ArrayVarMap::Create(UInt32 keyType, bool bPacked, const ModInfo* mod)
 {
 	ArrayID varID = GetUnusedID();
-	ArrayVar* newVar = VarMap::Insert(varID, keyType, bPacked, modIndex);
+	ArrayVar* newVar = VarMap::Insert(varID, keyType, bPacked, mod);
 	newVar->m_ID = varID;
 	MarkTemporary(varID, true); // queue for deletion until a reference to this array is made
 	return newVar;
@@ -1932,7 +1932,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 			{
 				modIndex = Serialization::ReadRecord8();
 #if _DEBUG
-				g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
+				g_modsWithCosaveVars.insert(g_modsLoaded.at(mod));
 #endif
 				if (version > kPreESLVersion)
 					smallModIndex = Serialization::ReadRecord16();

@@ -11,10 +11,10 @@
 
 #include "Core_Serialization.h"
 
-StringVar::StringVar(const char* in_data, const ModInfo* modIndex)
+StringVar::StringVar(const char* in_data, const ModInfo* mod)
 {
 	data = in_data;
-	owningMod = modIndex;
+	owningMod = mod;
 }
 
 StringVar::StringVar(StringVar&& other) noexcept: data(std::move(other.data)),
@@ -472,7 +472,7 @@ bool IsFunctionResultCacheString(UInt32 strId)
 bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 {
 	double strID = 0;
-	const ModInfo* modIndex = 0;
+	const ModInfo* mod = 0;
 	bool bTemp = true;
 	StringVar* strVar = NULL;
 	const auto isExpressionEvaluator = ExpressionEvaluator::Active();
@@ -481,13 +481,13 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 	if (!newValue || len >= kMaxMessageLength)		//if null pointer or too long, assign an empty string
 		newValue = "";
 
-	if (!isExpressionEvaluator && ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &modIndex, thisObj))
+	if (!isExpressionEvaluator && ExtractSetStatementVar(scriptObj, eventList, scriptData, &strID, &bTemp, opcodeOffsetPtr, &mod, thisObj))
 	{
 		strVar = g_StringMap.Get(strID);
 	}
 	
-	if (!modIndex)
-		modIndex = scriptObj->GetFile(0);
+	if (!mod)
+		mod = scriptObj->GetFile(0);
 
 	if (!isExpressionEvaluator) // set to statement
 	{
@@ -498,7 +498,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		}
 		else
 		{
-			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, bTemp));
+			strID = static_cast<int>(g_StringMap.Add(mod, newValue, bTemp));
 		}
 	}
 	else
@@ -522,7 +522,7 @@ bool AssignToStringVarLong(COMMAND_ARGS, const char* newValue)
 		else
 #endif
 
-			strID = static_cast<int>(g_StringMap.Add(modIndex, newValue, true, nullptr));
+			strID = static_cast<int>(g_StringMap.Add(mod, newValue, true, nullptr));
 	}
 	
 	*result = strID;

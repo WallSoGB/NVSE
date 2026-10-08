@@ -627,10 +627,10 @@ class ModLocalDataManager
 	// data is stored as key:value pairs, key is string, value is a formID, number, or string
 
 public:
-	ArrayElement* Get(const ModInfo* modIndex, const char* key);
-	bool Set(const ModInfo* modIndex, const char* key, const ArrayElement& data);
-	bool Remove(const ModInfo* modIndex, const char* key);
-	ArrayID GetAllAsNVSEArray(const ModInfo* modIndex);
+	ArrayElement* Get(const ModInfo* mod, const char* key);
+	bool Set(const ModInfo* mod, const char* key, const ArrayElement& data);
+	bool Remove(const ModInfo* mod, const char* key);
+	ArrayID GetAllAsNVSEArray(const ModInfo* mod);
 
 private:
 	typedef UnorderedMap<char*, ArrayElement> ModLocalData;
@@ -641,27 +641,27 @@ private:
 
 ModLocalDataManager s_modDataManager;
 
-ArrayElement* ModLocalDataManager::Get(const ModInfo* modIndex, const char* key)
+ArrayElement* ModLocalDataManager::Get(const ModInfo* mod, const char* key)
 {
-	ModLocalData *modLocData = m_data.GetPtr(modIndex);
+	ModLocalData *modLocData = m_data.GetPtr(mod);
 	if (modLocData)
 		return modLocData->GetPtr(const_cast<char*>(key));
 	return NULL;
 }
 
-ArrayID ModLocalDataManager::GetAllAsNVSEArray(const ModInfo* modIndex)
+ArrayID ModLocalDataManager::GetAllAsNVSEArray(const ModInfo* mod)
 {
-	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, modIndex);
-	ModLocalData *modLocData = m_data.GetPtr(modIndex);
+	ArrayVar *arr = g_ArrayMap.Create(kDataType_String, false, mod);
+	ModLocalData *modLocData = m_data.GetPtr(mod);
 	if (modLocData)
 		for (auto dataIter = modLocData->Begin(); !dataIter.End(); ++dataIter)
 			arr->SetElement(dataIter.Key(), &dataIter.Get());
 	return arr->ID();
 }
 
-bool ModLocalDataManager::Remove(const ModInfo* modIndex, const char* key)
+bool ModLocalDataManager::Remove(const ModInfo* mod, const char* key)
 {
-	ModLocalData *modLocData = m_data.GetPtr(modIndex);
+	ModLocalData *modLocData = m_data.GetPtr(mod);
 	if (modLocData)
 	{
 		auto dataIter = modLocData->Find(const_cast<char*>(key));
@@ -675,12 +675,12 @@ bool ModLocalDataManager::Remove(const ModInfo* modIndex, const char* key)
 	return false;
 }
 
-bool ModLocalDataManager::Set(const ModInfo* modIndex, const char* key, const ArrayElement& data)
+bool ModLocalDataManager::Set(const ModInfo* mod, const char* key, const ArrayElement& data)
 {
 	if (*key)
 	{
 		//MakeUpper(const_cast<char*>(key));
-		m_data[modIndex][const_cast<char*>(key)].Set(&data);
+		m_data[mod][const_cast<char*>(key)].Set(&data);
 		return true;
 	}
 	return false;

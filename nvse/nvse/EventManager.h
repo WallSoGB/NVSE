@@ -126,7 +126,7 @@ namespace EventManager
 		NativeEventHandlerInfo(NativeEventHandler func) : m_func(func) {}
 		[[nodiscard]] bool InitWithPluginInfo(NativeEventHandler func, PluginHandle pluginHandle, const char* handlerName);
 		[[nodiscard]] std::string GetStringRepresentation() const;
-		[[nodiscard]] ArrayVar* GetArrayRepresentation(const ModInfo* modIndex) const;
+		[[nodiscard]] ArrayVar* GetArrayRepresentation(const ModInfo* mod) const;
 
 		bool operator==(const NativeEventHandlerInfo& rhs) const { return m_func == rhs.m_func; }
 		operator bool() const { return m_func != nullptr; }

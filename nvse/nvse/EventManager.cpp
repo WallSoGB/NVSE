@@ -1499,9 +1499,9 @@ std::string NativeEventHandlerInfo::GetStringRepresentation() const
 	return FormatString("Internal handler %s (plugin %s)", m_handlerName, m_pluginName);
 }
 
-ArrayVar* NativeEventHandlerInfo::GetArrayRepresentation(const ModInfo* modIndex) const
+ArrayVar* NativeEventHandlerInfo::GetArrayRepresentation(const ModInfo* mod) const
 {
-	auto* result = g_ArrayMap.Create(kDataType_String, false, modIndex);
+	auto* result = g_ArrayMap.Create(kDataType_String, false, mod);
 	result->SetElementString("Plugin", m_pluginName);
 	result->SetElementString("Handler", m_handlerName);
 	return result;
