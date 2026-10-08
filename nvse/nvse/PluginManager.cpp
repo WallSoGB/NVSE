@@ -1093,7 +1093,7 @@ void * PluginManager::GetData(UInt32 dataID)
 	switch(dataID)
 	{
 	case NVSEDataInterface::kNVSEData_NumPreloadMods: 
-		modCount = g_modList.size();
+		modCount = g_modList[ModListType::kNormal].size();
 		result = &modCount;
 		break;
 	}

@@ -411,16 +411,8 @@ namespace ScriptDataCache
                     if (!currentMod)
                         return {nullptr};
 
-                    UInt32 reconstructedRefID = (static_cast<UInt32>(currentMod->modIndex) << 24);
-                    if (DataHandler::HasNewFileTypeSupport() && currentMod->IsSpecial()) {
-                        if (currentMod->IsSmall())
-                            reconstructedRefID |= (serialized.baseFormID & 0x00000FFF) | (static_cast<UInt32>(currentMod->secondIndex) << 12);
-                        else if (currentMod->IsMedium())
-                            reconstructedRefID |= (serialized.baseFormID & 0x0000FFFF) | (static_cast<UInt32>(currentMod->secondIndex) << 16);
-                    }
-                    else {
-                        reconstructedRefID |= (serialized.baseFormID & 0x00FFFFFF);
-                    }
+                    UInt32 reconstructedRefID = serialized.baseFormID;
+                    currentMod->AdjustFormIDFileIndex(reconstructedRefID);
                    
                     if (const auto pResolved = LookupFormByID(reconstructedRefID)) {
                         return { pResolved };

@@ -1898,6 +1898,18 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 }
 #if _DEBUG
 std::set<std::string> g_modsWithCosaveVars;
+
+void __fastcall RecordModWithCosaveVars(UInt8 modIndex, UInt16 secondaryIndex, bool useSecondaryIndex) {
+	if (useSecondaryIndex && (modIndex == 0xFE || modIndex == 0xFD)) {
+		if (modIndex == 0xFE)
+			g_modsWithCosaveVars.insert(g_modsLoaded[ModListType::kSmall].at(secondaryIndex));
+		else if (modIndex == 0xFD)
+			g_modsWithCosaveVars.insert(g_modsLoaded[ModListType::kMedium].at(secondaryIndex));
+	}
+	else {
+		g_modsWithCosaveVars.insert(g_modsLoaded[ModListType::kNormal].at(modIndex));
+	}
+}
 #endif
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 {
@@ -1909,7 +1921,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 	UInt32 type, length, version, arrayID, numElements;
 	UInt16 strLength;
-	UInt16 smallModIndex;
+	UInt16 secondIndex;
 	UInt8 modIndex, keyType;
 	bool bPacked;
 	ContainerType contType;
@@ -1930,23 +1942,22 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 			break;
 		case 'ARVR':
 			{
+				const bool saveHasSecondIndex = version > kPreESLVersion;
+				const bool useSecondaryIndex = saveHasSecondIndex && hasNewFileTypes;
+
 				modIndex = Serialization::ReadRecord8();
+
+				if (saveHasSecondIndex)
+					secondIndex = Serialization::ReadRecord16();
+
 #if _DEBUG
-				g_modsWithCosaveVars.insert(g_modsLoaded.at(mod));
+				RecordModWithCosaveVars(modIndex, secondIndex, useSecondaryIndex);
 #endif
-				if (version > kPreESLVersion)
-					smallModIndex = Serialization::ReadRecord16();
 
 				if (modIndex == 0xFF)
 					continue;
 
-				UInt32 tempModFormID = modIndex << 24;
-				if (version > kPreESLVersion && hasNewFileTypes) {
-					if (modIndex == 0xFE)
-						tempModFormID |= smallModIndex << 12;
-					else if (modIndex == 0xFD)
-						tempModFormID |= smallModIndex << 16;
-				}
+				UInt32 tempModFormID = DataHandler::BuildFormID(modIndex, 0, secondIndex, useSecondaryIndex);
 
 				const ModInfo* mod = nullptr;
 				if (!Serialization::ResolveRefID(tempModFormID, &tempModFormID)) {
@@ -1979,24 +1990,18 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						UInt32 refIdx = 0;
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
-							UInt16 curModSmallIndex = 0;
+							UInt16 curModSecondIndex = 0;
 							const UInt8 curModIndex = Serialization::ReadRecord8();
 
-							if (version > kPreESLVersion)
-								curModSmallIndex = Serialization::ReadRecord16();
+							if (saveHasSecondIndex)
+								curModSecondIndex = Serialization::ReadRecord16();
 		
 							if (curModIndex == 0xFF)
 								continue;
 #if _DEBUG
-							g_modsWithCosaveVars.insert(g_modsLoaded.at(curModIndex));
+							RecordModWithCosaveVars(curModIndex, curModSecondIndex, useSecondaryIndex);
 #endif
-							UInt32 tempRefID = curModIndex << 24;
-							if (version > kPreESLVersion) {
-								if (curModIndex == 0xFE)
-									tempRefID |= curModSmallIndex << 12;
-								else if (curModIndex == 0xFD)
-									tempRefID |= curModSmallIndex << 16;
-							}
+							UInt32 tempRefID = DataHandler::BuildFormID(curModIndex, 0, curModSecondIndex, useSecondaryIndex);
 							const bool resolvedFormID = Serialization::ResolveRefID(tempRefID, &tempRefID);
 
 							const ModInfo* newResolvedMod = DataHandler::Get()->GetModByFormID(tempRefID);
@@ -2014,7 +2019,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 									auto& numVars = varCountMap[newResolvedMod];
 									numVars++;
 									if (numVars > 2000)
-										g_cosaveWarning.modIndices.insert(curModIndex);
+										g_cosaveWarning.mods.insert(newResolvedMod);
 								}
 							}
 						}

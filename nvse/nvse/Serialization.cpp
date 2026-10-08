@@ -655,34 +655,24 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 	if (hasNewFileTypes && modID >= 0xFD) {
 		if (modID == 0xFD) {
 			const UInt32 mediumModID = (refID >> 16) & 0xFF;
-			if (mediumModID < g_mediumMods.size())
-				mod = g_mediumMods.at(mediumModID);
+			if (mediumModID < g_modList[ModListType::kMedium].size())
+				mod = g_modList[ModListType::kMedium].at(mediumModID);
 		}
 		else if (modID == 0xFE) {
 			const UInt32 smallModID = (refID >> 12) & 0xFFF;
-			if (smallModID < g_smallMods.size())
-				mod = g_smallMods.at(smallModID);
+			if (smallModID < g_modList[ModListType::kSmall].size())
+				mod = g_modList[ModListType::kSmall].at(smallModID);
 		}
 	}
-	else if (modID < g_modList.size()) {
-		mod = g_modList.at(modID);
+	else if (modID < g_modList[ModListType::kNormal].size()) {
+		mod = g_modList[ModListType::kNormal].at(modID);
 	}
 
 	if (!mod)
 		return false;
 
-	if (outRefID) {
-		if (hasNewFileTypes && mod->IsSpecial()) {
-			if (mod->IsSmall())
-				*outRefID = (refID & 0x00000FFF) | 0xFE000000 | (mod->secondIndex << 12);
-			else if (mod->IsMedium())
-				*outRefID = (refID & 0x0000FFFF) | 0xFD000000 | (mod->secondIndex << 16);
-		}
-		else {
-			// fixup ID, success
-			*outRefID = (refID & 0x00FFFFFF) | (mod->modIndex << 24);
-		}
-	}
+	if (outRefID)
+		mod->AdjustFormIDFileIndex(*outRefID);
 
 	return true;
 }
@@ -790,11 +780,11 @@ void HandlePostLoadGame(bool bLoadSucceeded)
 void ShowCosaveWarning()
 {
 	std::string msg = "NVSE: This co-save file has exceeded 4mb in file size which indicates a possible script leak. To fix this disable the following mods, load the save, save the game and then re-enable them:\n\n";
-	for (const auto idx : g_cosaveWarning.modIndices)
+	for (const auto mod : g_cosaveWarning.mods)
 	{
-		if (idx < g_modsLoaded.size())
+		if (mod)
 		{
-			msg += "- " + g_modsLoaded.at(idx) + "\n";
+			msg += "- " + std::string(mod->name) + "\n";
 		}
 	}
 	msg += "\nTo disable this warning, set bNoSaveWarnings=1 in Data\\NVSE\\nvse_config.ini. It is advised you update to the latest xNVSE. If you are on the latest xNVSE version or this warning persists report this to the xNVSE GitHub or Discord.";
@@ -938,11 +928,11 @@ void HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback
 	}
 	s_serializationTask.Unload();
 	
-	if (g_showFileSizeWarning && !g_cosaveWarning.modIndices.empty() && !g_cosaveWarning.modIndices.contains(0)) // can't suggest disabling FalloutNV.esm
+	if (g_showFileSizeWarning && !g_cosaveWarning.mods.empty() && !g_cosaveWarning.mods.contains(0)) // can't suggest disabling FalloutNV.esm
 	{
 		ShowCosaveWarning();
 	}
-	g_cosaveWarning.modIndices.clear();
+	g_cosaveWarning.mods.clear();
 	g_showFileSizeWarning = false;
 }
 

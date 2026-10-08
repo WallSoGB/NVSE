@@ -141,6 +141,20 @@ bool DataHandler::IsFormIDInUse(UInt32 formID) const {
 	return ThisStdCall<bool>(0x469760, this, formID);
 }
 
+UInt32 DataHandler::BuildFormID(UInt8 mainIndex, UInt32 formIndex, UInt16 secondIndex, bool useSecondary) {
+	UInt32 formID = 0;
+	if (useSecondary && HasNewFileTypeSupport()) {
+		if (mainIndex == 0xFD)
+			formID = 0xFD000000 | UInt32(secondIndex) << 16 | (formIndex & 0x0000FFFF);
+		else if (mainIndex == 0xFE)
+			formID = 0xFE000000 | UInt32(secondIndex) << 12 | (formIndex & 0x00000FFF);
+		return formID;
+	}
+	
+	formID = UInt32(mainIndex) << 24 | (formIndex & 0x00FFFFFF);
+	return formID;
+}
+
 struct IsModLoaded
 {
 	bool Accept(ModInfo* pModInfo) const {
@@ -160,6 +174,38 @@ ModInfo::ModInfo() {
 ModInfo::~ModInfo() {
 	//
 };
+
+ModInfo* ModInfo::GetIndexFile(UInt32 index) const {
+#if RUNTIME
+	return ThisStdCall<ModInfo*>(0x471A10, this, index);
+#else
+	return ThisStdCall<ModInfo*>(0x4DE2F0, this, index);
+#endif
+}
+
+void ModInfo::AdjustFormIDFileIndex(UInt32& formID) const {
+	const ModInfo* pIndexFile = this;
+	if (DataHandler::HasNewFileTypeSupport() && pIndexFile->IsSpecial()) {
+		if (IsOverlay()) {
+			pIndexFile = GetIndexFile(1);
+			if (!pIndexFile)
+				pIndexFile = this;
+		}
+		
+		if (pIndexFile->IsMedium()) {
+			formID = 0xFD000000 | UInt32(pIndexFile->secondIndex) << 16 | (formID & 0x0000FFFF);
+			return;
+		}
+
+		if (pIndexFile->IsSmall()) {
+			formID = 0xFE000000 | UInt32(pIndexFile->secondIndex) << 12 | (formID & 0x00000FFF);
+			return;
+		}
+	}
+
+	const UInt32 ucIndex = pIndexFile->modIndex;
+	formID = UInt32(pIndexFile->modIndex) << 24 | (formID & 0x00FFFFFF);
+}
 
 ModInfo* ModInfo::GetFileForTempID(UInt32 formID) {
 	return CdeclCall<ModInfo*>(0x474060, formID);

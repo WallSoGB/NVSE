@@ -10,7 +10,7 @@ extern bool g_showFileSizeWarning;
 
 struct CosaveWarning
 {
-	std::unordered_set<UInt8> modIndices;
+	std::unordered_set<const ModInfo*> mods;
 };
 
 extern CosaveWarning g_cosaveWarning;

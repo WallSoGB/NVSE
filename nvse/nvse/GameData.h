@@ -178,9 +178,13 @@ public:
 	bool IsMedium() const { return (flags & 0x400) != 0; }
 	bool IsSpecial() const { return (flags & 0x700) != 0; }
 
-	static ModInfo* GetFileForTempID(UInt32 formID);
+	ModInfo* GetIndexFile(UInt32 index) const;
+
+	void AdjustFormIDFileIndex(UInt32& formID) const;
 
 #if RUNTIME
+	static ModInfo* GetFileForTempID(UInt32 formID);
+
 	/*** used by TESForm::LoadForm() among others ***/
 	MEMBER_FN_PREFIX(ModInfo);
 	DEFINE_MEMBER_FN(GetNextChunk, UInt32, _ModInfo_GetNextChunk);	// returns chunk type
@@ -376,6 +380,8 @@ public:
 	void DisableAssignFormIDs(bool shouldAsssign);
 
 	bool IsFormIDInUse(UInt32 formID) const;
+
+	static UInt32 BuildFormID(UInt8 mainIndex, UInt32 formIndex, UInt16 secondIndex, bool useSecondary);
 
 	MEMBER_FN_PREFIX(DataHandler);
 #if RUNTIME

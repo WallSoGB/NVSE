@@ -323,10 +323,10 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 
 	// do some basic checking to weed out potential bloat caused by scripts creating large
 	// numbers of string variables
-	UInt32 modVarCounts[0x100] = {0};				// for each mod, # of string vars loaded
+	std::map<const ModInfo*, UInt32> modVarCounts;				// for each mod, # of string vars loaded
 	static const UInt32 varCountThreshold = 100;	// what we'll consider a "large number" of vars; 
 													// obviously a few mods may require more than this without it being a problem
-	Set<UInt8> exceededMods;
+	Set<const ModInfo*> exceededMods;
 
 	bool bContinue = true;
 	while (bContinue && Serialization::GetNextRecordInfo(&type, &version, &length))
@@ -341,59 +341,48 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 			{
 				_MESSAGE("  WARNING: substantial numbers of string variables exist for the following files (may indicate savegame bloat):");
 				for (auto iter = exceededMods.Begin(); !iter.End(); ++iter) {
-					_MESSAGE("    %s (%d strings)", DataHandler::Get()->GetNthModName(*iter), modVarCounts[*iter]);
+					_MESSAGE("    %s (%d strings)", (*iter)->name, modVarCounts[*iter]);
 				}
 			}
 
 			break;
 		case 'STVR':
-			modIndex = Serialization::ReadRecord8();
-			if (version > kPreESLVersion)
-				smallModIndex = Serialization::ReadRecord16();
-#if _DEBUG
-			g_modsWithCosaveVars.insert(g_modsLoaded.at(modIndex));
-			modVarCounts[modIndex] += 1;
-			if (modVarCounts[modIndex] == varCountThreshold) {
-				exceededMods.Insert(modIndex);
-				g_cosaveWarning.modIndices.insert(modIndex);
-			}
-#endif
-			if (modIndex == 0xFF)
-				continue;
-
-			tempRefID = modIndex << 24;
-			if (version > kPreESLVersion && hasNewFileTypes) {
-				if (modIndex == 0xFE)
-					tempRefID |= smallModIndex << 12;
-				else if (modIndex == 0xFD)
-					tempRefID |= smallModIndex << 16;
-			}
-
-			if (!Serialization::ResolveRefID(tempRefID, &tempRefID))
 			{
-				// owning mod is no longer loaded so discard
-				continue;
+				const bool saveHasSecondIndex = version > kPreESLVersion;
+				const bool useSecondaryIndex = saveHasSecondIndex && hasNewFileTypes;
+
+				modIndex = Serialization::ReadRecord8();
+				if (saveHasSecondIndex)
+					smallModIndex = Serialization::ReadRecord16();
+
+				if (modIndex == 0xFF)
+					continue;
+
+				tempRefID = DataHandler::BuildFormID(modIndex, 0, smallModIndex, useSecondaryIndex);
+
+				if (!Serialization::ResolveRefID(tempRefID, &tempRefID))
+				{
+					// owning mod is no longer loaded so discard
+					continue;
+				}
+				modIndex = tempRefID >> 24;
+
+				stringID = Serialization::ReadRecord32();
+				strLength = Serialization::ReadRecord16();
+
+				Serialization::ReadRecordData(stringBuffer, strLength);
+				stringBuffer[strLength] = 0;
+
+				const ModInfo* mod = DataHandler::Get()->GetModByFormID(tempRefID);
+				Insert(stringID, stringBuffer, mod);
+
+				modVarCounts[mod] += 1;
+				if (modVarCounts[mod] == varCountThreshold) 
+				{
+					exceededMods.Insert(mod);
+					g_cosaveWarning.mods.insert(mod);
+				}
 			}
-			modIndex = tempRefID >> 24;
-
-			stringID = Serialization::ReadRecord32();
-			strLength = Serialization::ReadRecord16();
-			
-			Serialization::ReadRecordData(stringBuffer, strLength);
-			stringBuffer[strLength] = 0;
-
-			Insert(stringID, stringBuffer, DataHandler::Get()->GetModByFormID(tempRefID));
-#if !_DEBUG
-			if (hasNewFileTypes && modIndex >= 0xFD)
-				break;
-
-			modVarCounts[modIndex] += 1;
-			if (modVarCounts[modIndex] == varCountThreshold) {
-				exceededMods.Insert(modIndex);
-				g_cosaveWarning.modIndices.insert(modIndex);
-			}
-#endif
-					
 			break;
 		default:
 			_MESSAGE("Error loading string map: unhandled chunk type %d", type);
