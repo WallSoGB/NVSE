@@ -1537,7 +1537,7 @@ bool Cmd_DecompileScript_Execute(COMMAND_ARGS)
 
 	std::string formName = form->GetName();
 	if (formName.empty())
-		formName = FormatString("%08X", form->refID & 0x00FFFFFF);
+		formName = FormatString("%08X", form->GetFormIDWithoutIndex());
 
 	if (IS_ID(form, Script))
 	{

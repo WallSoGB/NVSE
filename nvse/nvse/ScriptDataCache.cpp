@@ -271,15 +271,7 @@ namespace ScriptDataCache
                     if (it == modToTableIndex.end())
                         return {0xFFFF, 0};
 
-                    if (hasNewFileTypes) {
-                        const UInt8 index = ref->form->GetModIndex();
-                        if (index == 0xFE)
-                            return { it->second, ref->form->refID & 0x00000FFF };
-                        else if (index == 0xFD)
-                            return { it->second, ref->form->refID & 0x0000FFFF };
-                    }
-
-                    return {it->second, ref->form->refID & 0x00FFFFFF};
+                    return {it->second, ref->form->GetFormIDWithoutIndex() };
                 }();
 
                 serialized.modNameIndex = modNameIndex;

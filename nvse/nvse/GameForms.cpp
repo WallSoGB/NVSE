@@ -46,6 +46,18 @@ const char* TESForm::GetEditorID() const
 #endif
 }
 
+UInt32 TESForm::GetFormID() const {
+	return refID;
+}
+
+UInt32 TESForm::GetFormIDWithoutIndex() const {
+#if RUNTIME
+	return ThisStdCall<UInt32>(0x485BC0, this);
+#else
+	return refID & 0x00FFFFFF;
+#endif
+}
+
 TESForm *TESForm::TryGetREFRParent(void)
 {
 	TESForm *result = this;

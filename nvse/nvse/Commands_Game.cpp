@@ -199,7 +199,7 @@ bool Cmd_GetSourceModIndex_Execute(COMMAND_ARGS)
 	
 	if (form)
 	{
-		*result = (UInt8)(form->refID >> 24);
+		*result = form->GetModIndex();
 	}
 
 	return true;
@@ -218,11 +218,7 @@ bool Cmd_GetLocalRefIndex_Execute(COMMAND_ARGS)
 
 	if (form)
 	{
-		ModInfo* mod = form->GetFile(0);
-		if (mod && mod->IsSmall())
-			*result = form->refID & 0x00000FFF;
-		else
-			*result = form->refID & 0x00FFFFFF;
+		*result = form->GetFormIDWithoutIndex();
 	}
 
 	return true;

@@ -348,6 +348,8 @@ public:
 
 	// Looks like there is another DWord here, used as a byte: LastLoaded or Active or Selected ? 
 
+	UInt32			GetFormID() const;
+	UInt32			GetFormIDWithoutIndex() const;
 	TESForm *		TryGetREFRParent(void);
 	UInt8			GetModIndex() const;
 	UInt16			GetSmallModIndex() const;
