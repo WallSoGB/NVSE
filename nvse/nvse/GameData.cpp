@@ -207,9 +207,11 @@ void ModInfo::AdjustFormIDFileIndex(UInt32& formID) const {
 	formID = UInt32(pIndexFile->modIndex) << 24 | (formID & 0x00FFFFFF);
 }
 
+#if RUNTIME
 ModInfo* ModInfo::GetFileForTempID(UInt32 formID) {
 	return CdeclCall<ModInfo*>(0x474060, formID);
 }
+#endif
 
 ModInfo* ModList::GetMod(UInt8 modIndex) const {
 	if (modIndex >= GetNormalModCount())
