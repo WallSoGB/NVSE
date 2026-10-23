@@ -37,7 +37,7 @@ namespace {
 	inline void __fastcall LoadMod(NVSESerializationInterface* intfc, char* name) noexcept {
 		UInt16 nameLen = 0;
 		intfc->ReadRecordData(&nameLen, sizeof(nameLen));
-		intfc->ReadRecordData(&name, nameLen);
+		intfc->ReadRecordData(name, nameLen);
 		name[nameLen] = 0;
 	}
 
