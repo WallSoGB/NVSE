@@ -7,6 +7,7 @@
 #include "PluginManager.h"
 #include "GameAPI.h"
 #include "GameData.h"
+#include "FormUtils.h"
 #include <vector>
 //#include "EventManager.h"
 
@@ -638,9 +639,9 @@ UInt32 PeekRecordData(void * buf, UInt32 length)
 	return length;
 }
 
-bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
+__declspec(noinline) bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 {
-	const UInt32 modID = (refID >> 24) & 0xFF;
+	const UInt8 modID = (refID >> 24) & 0xFF;
 
 	// pass dynamic ids straight through
 	if (modID == 0xFF)
@@ -672,7 +673,7 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return false;
 
 	if (outRefID)
-		mod->AdjustFormIDFileIndex(*outRefID);
+		FormUtils::AdjustFormIDForMod(mod, *outRefID);
 
 	return true;
 }

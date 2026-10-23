@@ -10,6 +10,7 @@
 #include <unordered_map>
 
 #include "ScriptUtils.h"
+#include "FormUtils.h"
 #include "GameData.h"
 
 namespace ScriptDataCache
@@ -412,10 +413,9 @@ namespace ScriptDataCache
                         return {nullptr};
 
                     UInt32 reconstructedRefID = serialized.baseFormID;
-                    currentMod->AdjustFormIDFileIndex(reconstructedRefID);
-                   
-                    if (const auto pResolved = LookupFormByID(reconstructedRefID)) {
-                        return { pResolved };
+                    if (FormUtils::AdjustFormIDForMod(currentMod, reconstructedRefID)) {
+                        if (const auto pResolved = LookupFormByID(reconstructedRefID))
+                            return { pResolved };
                     }
 
                     return std::nullopt;

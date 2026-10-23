@@ -180,8 +180,6 @@ public:
 
 	ModInfo* GetIndexFile(UInt32 index) const;
 
-	void AdjustFormIDFileIndex(UInt32& formID) const;
-
 #if RUNTIME
 	static ModInfo* GetFileForTempID(UInt32 formID);
 
