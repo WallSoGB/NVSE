@@ -1902,12 +1902,12 @@ std::set<std::string> g_modsWithCosaveVars;
 void __fastcall RecordModWithCosaveVars(UInt8 modIndex, UInt16 secondaryIndex, bool useSecondaryIndex) {
 	if (useSecondaryIndex && (modIndex == 0xFE || modIndex == 0xFD)) {
 		if (modIndex == 0xFE)
-			g_modsWithCosaveVars.insert(g_modsLoaded[ModListType::kSmall].at(secondaryIndex));
+			g_modsWithCosaveVars.insert(g_saveModListNames[ModListType::kSmall].at(secondaryIndex));
 		else if (modIndex == 0xFD)
-			g_modsWithCosaveVars.insert(g_modsLoaded[ModListType::kMedium].at(secondaryIndex));
+			g_modsWithCosaveVars.insert(g_saveModListNames[ModListType::kMedium].at(secondaryIndex));
 	}
 	else {
-		g_modsWithCosaveVars.insert(g_modsLoaded[ModListType::kNormal].at(modIndex));
+		g_modsWithCosaveVars.insert(g_saveModListNames[ModListType::kNormal].at(modIndex));
 	}
 }
 #endif

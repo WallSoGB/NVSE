@@ -8,8 +8,8 @@ enum ModListType : UInt32 {
 	kCount
 };
 
-extern std::vector<const class ModInfo*> g_modList[ModListType::kCount];
-extern std::vector<std::string> g_modsLoaded[ModListType::kCount];
+extern std::vector<const class ModInfo*> g_saveModList[ModListType::kCount];
+extern std::vector<std::string> g_saveModListNames[ModListType::kCount];
 
 void Init_CoreSerialization_Callbacks();
 

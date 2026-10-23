@@ -655,17 +655,17 @@ bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 	if (hasNewFileTypes && modID >= 0xFD) {
 		if (modID == 0xFD) {
 			const UInt32 mediumModID = (refID >> 16) & 0xFF;
-			if (mediumModID < g_modList[ModListType::kMedium].size())
-				mod = g_modList[ModListType::kMedium].at(mediumModID);
+			if (mediumModID < g_saveModList[ModListType::kMedium].size())
+				mod = g_saveModList[ModListType::kMedium].at(mediumModID);
 		}
 		else if (modID == 0xFE) {
 			const UInt32 smallModID = (refID >> 12) & 0xFFF;
-			if (smallModID < g_modList[ModListType::kSmall].size())
-				mod = g_modList[ModListType::kSmall].at(smallModID);
+			if (smallModID < g_saveModList[ModListType::kSmall].size())
+				mod = g_saveModList[ModListType::kSmall].at(smallModID);
 		}
 	}
-	else if (modID < g_modList[ModListType::kNormal].size()) {
-		mod = g_modList[ModListType::kNormal].at(modID);
+	else if (modID < g_saveModList[ModListType::kNormal].size()) {
+		mod = g_saveModList[ModListType::kNormal].at(modID);
 	}
 
 	if (!mod)
