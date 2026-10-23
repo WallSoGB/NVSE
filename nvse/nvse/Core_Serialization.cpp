@@ -157,7 +157,7 @@ bool __fastcall SaveModList(NVSESerializationInterface* intfc) {
 	if (dhand->GetSmallModCount() || dhand->GetMediumModCount())
 		version = 1;
 	intfc->OpenRecord('MODS', version);
-	return ReadModListFromCoSave(intfc, version);
+	return WriteModListToCoSave(intfc, version);
 }
 
 /*******************************
