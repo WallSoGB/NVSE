@@ -260,7 +260,7 @@ public:
 	DataHandler();
 	~DataHandler();
 
-	UInt32							flags;					// 000
+	UInt8							flags;					// 000
 	BoundObjectListHead				* boundObjectList;		// 004
 	tList<TESPackage>				packageList;			// 008
 	tList<TESWorldSpace>			worldSpaceList;			// 010
