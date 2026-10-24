@@ -671,10 +671,9 @@ __declspec(noinline) bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 
 	if (!mod)
 		return false;
-
-	if (outRefID)
-		FormUtils::AdjustFormIDForMod(mod, *outRefID);
-
+	}
+	if (outRefID && FormUtils::AdjustFormIDForMod(mod, refID))
+		*outRefID = refID;
 	return true;
 }
 
