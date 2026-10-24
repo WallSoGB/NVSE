@@ -171,7 +171,7 @@ public:
 
 	// In Editor: 430 = ONAM array and 434 ONAM array count. Allocated at 0438
 	
-	bool IsLoaded() const { return modIndex != 0xFF; }
+	bool IsLoaded() const { return true; }
 
 	bool IsSmall() const { return (flags & 0x100) != 0; }
 	bool IsOverlay() const { return (flags & 0x200) != 0; }
