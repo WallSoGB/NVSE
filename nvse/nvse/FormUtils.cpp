@@ -5,6 +5,9 @@ namespace FormUtils {
 #pragma optimize("y", on)
 
 	__declspec(noinline) bool __fastcall AdjustFormIDForMod(const ModInfo* mod, UInt32& formID) {
+		if (!mod)
+			return false;
+
 		const UInt32 modIndex = UInt32(mod->modIndex) << 24;
 		UInt32 secondIndex = 0;
 		UInt32 idMask = 0x00FFFFFF;

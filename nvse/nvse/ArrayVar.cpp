@@ -1900,15 +1900,19 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 std::set<std::string> g_modsWithCosaveVars;
 
 void __fastcall RecordModWithCosaveVars(UInt8 modIndex, UInt16 secondaryIndex, bool useSecondaryIndex) {
+	std::string modName;
 	if (useSecondaryIndex && (modIndex == 0xFE || modIndex == 0xFD)) {
-		if (modIndex == 0xFE)
-			g_modsWithCosaveVars.insert(g_saveModListNames[ModListType::kSmall].at(secondaryIndex));
-		else if (modIndex == 0xFD)
-			g_modsWithCosaveVars.insert(g_saveModListNames[ModListType::kMedium].at(secondaryIndex));
+		if (modIndex == 0xFE && secondaryIndex < g_saveModListNames[ModListType::kSmall].size())
+			modName = g_saveModListNames[ModListType::kSmall].at(secondaryIndex);
+		else if (modIndex == 0xFD && secondaryIndex < g_saveModListNames[ModListType::kMedium].size())
+			modName = g_saveModListNames[ModListType::kMedium].at(secondaryIndex);
 	}
-	else {
-		g_modsWithCosaveVars.insert(g_saveModListNames[ModListType::kNormal].at(modIndex));
+	else if (modIndex < g_saveModListNames[ModListType::kNormal].size()) {
+		modName = g_saveModListNames[ModListType::kNormal].at(modIndex);
 	}
+
+	if (!modName.empty())
+		g_modsWithCosaveVars.insert(modName);
 }
 #endif
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
