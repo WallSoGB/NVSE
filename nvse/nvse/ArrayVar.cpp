@@ -1925,8 +1925,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 	UInt32 type, length, version, arrayID, numElements;
 	UInt16 strLength;
-	UInt16 secondIndex;
-	UInt8 modIndex, keyType;
+	UInt8 keyType;
 	bool bPacked;
 	ContainerType contType;
 	static char stringBuffer[kMaxMessageLength];
@@ -1949,10 +1948,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				const bool saveHasSecondIndex = version > kPreESLVersion;
 				const bool useSecondaryIndex = saveHasSecondIndex && hasNewFileTypes;
 
-				modIndex = Serialization::ReadRecord8();
-
-				if (saveHasSecondIndex)
-					secondIndex = Serialization::ReadRecord16();
+				const UInt8 modIndex = Serialization::ReadRecord8();
+				const UInt16 secondIndex = saveHasSecondIndex ? Serialization::ReadRecord16() : 0;
 
 #if _DEBUG
 				RecordModWithCosaveVars(modIndex, secondIndex, useSecondaryIndex);
@@ -1994,11 +1991,8 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						UInt32 refIdx = 0;
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
-							UInt16 curModSecondIndex = 0;
 							const UInt8 curModIndex = Serialization::ReadRecord8();
-
-							if (saveHasSecondIndex)
-								curModSecondIndex = Serialization::ReadRecord16();
+							const UInt16 curModSecondIndex = saveHasSecondIndex ? Serialization::ReadRecord16() : 0;
 		
 							if (curModIndex == 0xFF)
 								continue;

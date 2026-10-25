@@ -313,8 +313,6 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	_MESSAGE("Loading strings");
 	UInt32 type, length, version, stringID;
 	UInt16 strLength;
-	UInt16 smallModIndex;
-	UInt8 modIndex;
 	char stringBuffer[kMaxMessageLength];
 
 	Clean();
@@ -351,21 +349,19 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 				const bool saveHasSecondIndex = version > kPreESLVersion;
 				const bool useSecondaryIndex = saveHasSecondIndex && hasNewFileTypes;
 
-				modIndex = Serialization::ReadRecord8();
-				if (saveHasSecondIndex)
-					smallModIndex = Serialization::ReadRecord16();
+				const UInt8 modIndex = Serialization::ReadRecord8();
+				const UInt16 secondIndex = saveHasSecondIndex ? Serialization::ReadRecord16() : 0;
 
 				if (modIndex == 0xFF)
 					continue;
 
-				tempRefID = DataHandler::BuildFormID(modIndex, 0, smallModIndex, useSecondaryIndex);
+				tempRefID = DataHandler::BuildFormID(modIndex, 0, secondIndex, useSecondaryIndex);
 
 				if (!Serialization::ResolveRefID(tempRefID, &tempRefID))
 				{
 					// owning mod is no longer loaded so discard
 					continue;
 				}
-				modIndex = tempRefID >> 24;
 
 				stringID = Serialization::ReadRecord32();
 				strLength = Serialization::ReadRecord16();
