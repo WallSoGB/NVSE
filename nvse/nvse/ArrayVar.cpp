@@ -1908,20 +1908,9 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 #if _DEBUG
 std::set<std::string> g_modsWithCosaveVars;
 
-void __fastcall RecordModWithCosaveVars(UInt8 modIndex, UInt16 secondaryIndex, bool useSecondaryIndex) {
-	std::string modName;
-	if (useSecondaryIndex && (modIndex == 0xFE || modIndex == 0xFD)) {
-		if (modIndex == 0xFE && secondaryIndex < g_saveModListNames[ModListType::kSmall].size())
-			modName = g_saveModListNames[ModListType::kSmall].at(secondaryIndex);
-		else if (modIndex == 0xFD && secondaryIndex < g_saveModListNames[ModListType::kMedium].size())
-			modName = g_saveModListNames[ModListType::kMedium].at(secondaryIndex);
-	}
-	else if (modIndex < g_saveModListNames[ModListType::kNormal].size()) {
-		modName = g_saveModListNames[ModListType::kNormal].at(modIndex);
-	}
-
-	if (!modName.empty())
-		g_modsWithCosaveVars.insert(modName);
+void __fastcall RecordModWithCosaveVars(const ModInfo* mod) {
+	if (mod)
+		g_modsWithCosaveVars.insert(mod->name);
 }
 #endif
 void ArrayVarMap::Load(NVSESerializationInterface* intfc)
@@ -1957,7 +1946,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 				const ModInfo* mod = LoadMod(saveHasSecondIndex);
 
 #if _DEBUG
-				RecordModWithCosaveVars(modIndex, secondIndex, useSecondaryIndex);
+				RecordModWithCosaveVars(mod);
 #endif
 				if (!mod) {
 					// owning mod was removed, but there may be references to it from other mods
@@ -1990,7 +1979,7 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 							if (!refMod)
 								continue;
 #if _DEBUG
-							RecordModWithCosaveVars(curModIndex, curModSecondIndex, useSecondaryIndex);
+							RecordModWithCosaveVars(refMod);
 #endif
 							if (!mod) 
 							{
