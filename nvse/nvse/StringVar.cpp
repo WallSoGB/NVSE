@@ -274,13 +274,31 @@ char StringVar::At(UInt32 charPos)
 		return -1;
 }
 
+static void __fastcall SaveMod(const ModInfo* mod) {
+	UInt16 modIndex = (DataHandler::HasNewFileTypeSupport() && mod->IsSpecial()) ? mod->secondIndex : mod->modIndex;
+	Serialization::WriteRecord8(Serialization::GetModType(mod));
+	Serialization::WriteRecord16(modIndex);
+}
+
+static const ModInfo* __fastcall LoadMod(bool fullData) {
+	UInt8 type = NVSESerializationInterface::ModListType::kInvalid;
+	UInt16 modIndex = 0xFFFF;
+	if (fullData) {
+		type = Serialization::ReadRecord8();
+		modIndex = Serialization::ReadRecord16();
+		return Serialization::ResolveMod(modIndex, static_cast<NVSESerializationInterface::ModListType>(type));
+	}
+	else {
+		modIndex = Serialization::ReadRecord8();
+		return Serialization::ResolveMod(modIndex, NVSESerializationInterface::ModListType::kNormal);
+	}
+}
+
 void StringVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-	UInt32 version = kPreESLVersion;
-	if (DataHandler::HasNewFileTypeSupport())
-		version = kVersion;
+	const UInt32 version = kVersion;
 
 	Serialization::OpenRecord('STVS', version);
 
@@ -289,12 +307,11 @@ void StringVarMap::Save(NVSESerializationInterface* intfc)
 		if (IsTemporary(iter.Key()))	// don't save temp strings
 			continue;
 		StringVar* var = &iter.Get();
-		if (!var->GetOwningMod())
+		const ModInfo* mod = var->GetOwningMod();
+		if (!mod)
 			continue; // do not save function result cache
 		Serialization::OpenRecord('STVR', version);
-		Serialization::WriteRecord8(var->GetOwningMod()->modIndex);
-		if (version > kPreESLVersion)
-			Serialization::WriteRecord16(var->GetOwningMod()->secondIndex);
+		SaveMod(mod);
 		Serialization::WriteRecord32(iter.Key());
 		UInt16 len = var->GetLength();
 		Serialization::WriteRecord16(len);
@@ -316,8 +333,6 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 	char stringBuffer[kMaxMessageLength];
 
 	Clean();
-
-	const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
 
 	// do some basic checking to weed out potential bloat caused by scripts creating large
 	// numbers of string variables
@@ -347,21 +362,11 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 		case 'STVR':
 			{
 				const bool saveHasSecondIndex = version > kPreESLVersion;
-				const bool useSecondaryIndex = saveHasSecondIndex && hasNewFileTypes;
 
-				const UInt8 modIndex = Serialization::ReadRecord8();
-				const UInt16 secondIndex = saveHasSecondIndex ? Serialization::ReadRecord16() : 0;
+				const ModInfo* mod = LoadMod(saveHasSecondIndex);
 
-				if (modIndex == 0xFF)
+				if (!mod)
 					continue;
-
-				tempRefID = DataHandler::BuildFormID(modIndex, 0, secondIndex, useSecondaryIndex);
-
-				if (!Serialization::ResolveRefID(tempRefID, &tempRefID))
-				{
-					// owning mod is no longer loaded so discard
-					continue;
-				}
 
 				stringID = Serialization::ReadRecord32();
 				strLength = Serialization::ReadRecord16();
@@ -369,7 +374,6 @@ void StringVarMap::Load(NVSESerializationInterface* intfc)
 				Serialization::ReadRecordData(stringBuffer, strLength);
 				stringBuffer[strLength] = 0;
 
-				const ModInfo* mod = DataHandler::Get()->GetModByFormID(tempRefID);
 				Insert(stringID, stringBuffer, mod);
 
 				modVarCounts[mod] += 1;

@@ -26,6 +26,8 @@ Save file format:
 
 **************************/					
 
+constexpr UInt32 kNewPluginTypesVersion = 1;
+
 namespace {
 
 	inline void __fastcall SaveMod(NVSESerializationInterface* intfc, const ModInfo* mod) noexcept {
@@ -51,6 +53,8 @@ namespace {
 					return mod->IsSmall();
 				case ModListType::kMedium:
 					return mod->IsMedium();
+				case ModListType::kOverlay:
+					return mod->IsOverlay();
 				default:
 					__assume(false);
 			}
@@ -94,7 +98,7 @@ namespace {
 				_MESSAGE("PRELOAD: Mod %s not found in mod list", name);
 		}
 
-		if (version) {
+		if (version >= kNewPluginTypesVersion) {
 			UInt16 smallModCount = 0;
 			intfc->ReadRecordData(&smallModCount, sizeof(smallModCount));
 			SetModArraysSize<ModListType::kSmall>(smallModCount);
@@ -114,6 +118,16 @@ namespace {
 				if (!ResolveMod<ModListType::kMedium>(name, i))
 					_MESSAGE("PRELOAD: Medium mod %s not found in mod list", name);
 			}
+
+			UInt16 overlayModCount = 0;
+			intfc->ReadRecordData(&overlayModCount, sizeof(overlayModCount));
+			SetModArraysSize<ModListType::kOverlay>(overlayModCount);
+			for (UInt32 i = 0; i < overlayModCount; i++) {
+				LoadMod(intfc, name);
+
+				if (!ResolveMod<ModListType::kOverlay>(name, i))
+					_MESSAGE("PRELOAD: Overlay mod %s not found in mod list", name);
+			}
 		}
 
 		return true;
@@ -128,7 +142,7 @@ namespace {
 			SaveMod(intfc, dhand->GetNormalMod(i));
 		}
 
-		if (version) {
+		if (version >= kNewPluginTypesVersion) {
 			const UInt16 smallModCount = dhand->GetSmallModCount();
 			intfc->WriteRecordData(&smallModCount, sizeof(smallModCount));
 			for (UInt32 i = 0; i < smallModCount; i++) {
@@ -139,6 +153,12 @@ namespace {
 			intfc->WriteRecordData(&mediumModCount, sizeof(mediumModCount));
 			for (UInt32 i = 0; i < mediumModCount; i++) {
 				SaveMod(intfc, dhand->GetMediumMod(i));
+			}
+
+			const UInt16 overlayModCount = dhand->GetOverlayModCount();
+			intfc->WriteRecordData(&overlayModCount, sizeof(overlayModCount));
+			for (UInt32 i = 0; i < overlayModCount; i++) {
+				SaveMod(intfc, dhand->GetOverlayMod(i));
 			}
 		}
 
@@ -152,10 +172,7 @@ bool __fastcall LoadModList(NVSESerializationInterface* intfc, UInt32 version) {
 }
 
 bool __fastcall SaveModList(NVSESerializationInterface* intfc) {
-	const DataHandler* dhand = DataHandler::Get();
-	UInt32 version = 0;
-	if (dhand->GetSmallModCount() || dhand->GetMediumModCount())
-		version = 1;
+	UInt32 version = kNewPluginTypesVersion;
 	intfc->OpenRecord('MODS', version);
 	return WriteModListToCoSave(intfc, version);
 }

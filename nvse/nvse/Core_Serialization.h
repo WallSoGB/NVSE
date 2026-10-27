@@ -4,6 +4,7 @@ enum ModListType : UInt32 {
 	kNormal = 0,
 	kSmall = 1,
 	kMedium = 2,
+	kOverlay = 3,
 
 	kCount
 };

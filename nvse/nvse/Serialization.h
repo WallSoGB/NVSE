@@ -98,6 +98,9 @@ void	SkipNBytes(UInt32 byteNum);
 
 bool	ResolveRefID(UInt32 refID, UInt32 * outRefID);
 
+const ModInfo* ResolveMod(UInt32 index, NVSESerializationInterface::ModListType modType);
+NVSESerializationInterface::ModListType GetModType(const ModInfo* mod);
+
 // internal event handlers
 void	HandleSaveGame(const char * path);
 void	HandleLoadGame(const char * path, NVSESerializationInterface::EventCallback PluginCallbacks::* callback = &PluginCallbacks::load);

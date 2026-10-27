@@ -651,30 +651,52 @@ __declspec(noinline) bool ResolveRefID(UInt32 refID, UInt32 * outRefID)
 		return true;
 	}
 
-	const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
 	const ModInfo* mod = nullptr;
-	if (hasNewFileTypes && modID >= 0xFD) {
+	if (modID >= 0xFD && DataHandler::HasNewFileTypeSupport()) {
 		if (modID == 0xFD) {
 			const UInt32 mediumModID = (refID >> 16) & 0xFF;
-			if (mediumModID < g_saveModList[ModListType::kMedium].size())
-				mod = g_saveModList[ModListType::kMedium].at(mediumModID);
+			mod = ResolveMod(mediumModID, NVSESerializationInterface::ModListType::kMedium);
 		}
 		else if (modID == 0xFE) {
 			const UInt32 smallModID = (refID >> 12) & 0xFFF;
-			if (smallModID < g_saveModList[ModListType::kSmall].size())
-				mod = g_saveModList[ModListType::kSmall].at(smallModID);
+			mod = ResolveMod(smallModID, NVSESerializationInterface::ModListType::kSmall);
 		}
 	}
-	else if (modID < g_saveModList[ModListType::kNormal].size()) {
-		mod = g_saveModList[ModListType::kNormal].at(modID);
+	else {
+		mod = ResolveMod(modID, NVSESerializationInterface::ModListType::kNormal);
 	}
 
-	if (!mod)
+	if (!mod) [[unlikely]]
 		return false;
 
-	if (outRefID && FormUtils::AdjustFormIDForMod(mod, refID))
+	if (outRefID && FormUtils::AdjustFormIDForMod(mod, refID)) [[likely]]
 		*outRefID = refID;
 	return true;
+}
+
+const ModInfo* ResolveMod(UInt32 index, NVSESerializationInterface::ModListType modType) {
+	const ModInfo* mod = nullptr;
+	if (modType < NVSESerializationInterface::ModListType::kCount) [[likely]] {
+		if (index < g_saveModList[modType].size()) [[likely]]
+			mod = g_saveModList[modType].at(index);
+	}
+	return mod;
+}
+
+NVSESerializationInterface::ModListType GetModType(const ModInfo* mod) {
+	if (!mod)
+		return NVSESerializationInterface::ModListType::kInvalid;
+
+	if (DataHandler::HasNewFileTypeSupport() && mod->IsSpecial()) {
+		if (mod->IsSmall())
+			return NVSESerializationInterface::ModListType::kSmall;
+		else if (mod->IsMedium())
+			return NVSESerializationInterface::ModListType::kMedium;
+		else if (mod->IsOverlay())
+			return NVSESerializationInterface::ModListType::kOverlay;
+	}
+	
+	return NVSESerializationInterface::ModListType::kNormal;
 }
 
 const char * GetSavePath()

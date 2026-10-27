@@ -1800,13 +1800,32 @@ ArrayElement* ArrayVarMap::GetElement(ArrayID id, const ArrayKey* key)
 	return arr ? arr->Get(key, false) : nullptr;
 }
 
+static void __fastcall SaveMod(const ModInfo* mod) {
+	UInt16 modIndex = (DataHandler::HasNewFileTypeSupport() && mod->IsSpecial()) ? mod->secondIndex : mod->modIndex;
+	Serialization::WriteRecord8(Serialization::GetModType(mod));
+	Serialization::WriteRecord16(modIndex);
+}
+
+static const ModInfo* __fastcall LoadMod(bool fullData) {
+	UInt8 type = NVSESerializationInterface::ModListType::kInvalid;
+	UInt16 modIndex = 0xFFFF;
+	const ModInfo* mod = nullptr;
+	if (fullData) {
+		type = Serialization::ReadRecord8();
+		modIndex = Serialization::ReadRecord16();
+		return Serialization::ResolveMod(modIndex, static_cast<NVSESerializationInterface::ModListType>(type));
+	}
+	else {
+		modIndex = Serialization::ReadRecord8();
+		return Serialization::ResolveMod(modIndex, NVSESerializationInterface::ModListType::kNormal);
+	}
+}
+
 void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 {
 	Clean();
 
-	UInt32 version = kPreESLVersion;
-	if (DataHandler::HasNewFileTypeSupport())
-		version = kVersion;
+	UInt32 version = kVersion;
 
 	Serialization::OpenRecord('ARVS', version);
 
@@ -1823,7 +1842,8 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 			continue;
 
 		pVar = &iter.Get();
-		if (!pVar->m_owningMod)
+		const ModInfo* mod = pVar->m_owningMod;
+		if (!mod)
 			continue;
 
 		numRefs = pVar->m_refs.Size();
@@ -1831,25 +1851,14 @@ void ArrayVarMap::Save(NVSESerializationInterface* intfc)
 		keyType = pVar->m_keyType;
 
 		Serialization::OpenRecord('ARVR', version);
-		Serialization::WriteRecord8(pVar->m_owningMod->modIndex);
-		if (version > kPreESLVersion)
-			Serialization::WriteRecord16(pVar->m_owningMod->secondIndex);
+		SaveMod(mod);
 		Serialization::WriteRecord32(iter.Key());
 		Serialization::WriteRecord8(keyType);
 		Serialization::WriteRecord8(pVar->m_bPacked);
 		Serialization::WriteRecord32(numRefs);
-		if (version > kPreESLVersion) {
-			for (const ModInfo* mod : pVar->m_refs) {
-				Serialization::WriteRecord8(mod->modIndex);
-				Serialization::WriteRecord16(mod->secondIndex);
-			}
+		for (const ModInfo* refMod : pVar->m_refs) {
+			SaveMod(refMod);
 		}
-		else {
-			for (const ModInfo* mod : pVar->m_refs) {
-				Serialization::WriteRecord8(mod->modIndex);
-			}
-		}
-
 		numRefs = pVar->Size();
 		Serialization::WriteRecord32(numRefs);
 		if (!numRefs) continue;
@@ -1921,8 +1930,6 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 
 	Clean(); // clean up any vars queued for garbage collection
 
-	const bool hasNewFileTypes = DataHandler::HasNewFileTypeSupport();
-
 	UInt32 type, length, version, arrayID, numElements;
 	UInt16 strLength;
 	UInt8 keyType;
@@ -1946,31 +1953,19 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 		case 'ARVR':
 			{
 				const bool saveHasSecondIndex = version > kPreESLVersion;
-				const bool useSecondaryIndex = saveHasSecondIndex && hasNewFileTypes;
 
-				const UInt8 modIndex = Serialization::ReadRecord8();
-				const UInt16 secondIndex = saveHasSecondIndex ? Serialization::ReadRecord16() : 0;
+				const ModInfo* mod = LoadMod(saveHasSecondIndex);
 
 #if _DEBUG
 				RecordModWithCosaveVars(modIndex, secondIndex, useSecondaryIndex);
 #endif
-
-				if (modIndex == 0xFF)
-					continue;
-
-				UInt32 tempModFormID = DataHandler::BuildFormID(modIndex, 0, secondIndex, useSecondaryIndex);
-
-				const ModInfo* mod = nullptr;
-				if (!Serialization::ResolveRefID(tempModFormID, &tempModFormID)) {
+				if (!mod) {
 					// owning mod was removed, but there may be references to it from other mods
 					// assign ownership to the first mod which refers to it and is still loaded
 					// if no loaded mods refer to it, discard
 					// we handle all of that below
 					_MESSAGE(
 						"Mod owning array was removed from load order; will attempt to assign ownership to a referring mod.");
-				}
-				else {
-					mod = DataHandler::Get()->GetModByFormID(tempModFormID);
 				}
 
 				arrayID = Serialization::ReadRecord32();
@@ -1991,34 +1986,26 @@ void ArrayVarMap::Load(NVSESerializationInterface* intfc)
 						UInt32 refIdx = 0;
 						for (UInt32 i = 0; i < numRefs; i++)
 						{
-							const UInt8 curModIndex = Serialization::ReadRecord8();
-							const UInt16 curModSecondIndex = saveHasSecondIndex ? Serialization::ReadRecord16() : 0;
-		
-							if (curModIndex == 0xFF)
+							const ModInfo* refMod = LoadMod(saveHasSecondIndex);
+							if (!refMod)
 								continue;
 #if _DEBUG
 							RecordModWithCosaveVars(curModIndex, curModSecondIndex, useSecondaryIndex);
 #endif
-							UInt32 tempRefID = DataHandler::BuildFormID(curModIndex, 0, curModSecondIndex, useSecondaryIndex);
-							const bool resolvedFormID = Serialization::ResolveRefID(tempRefID, &tempRefID);
-
-							const ModInfo* newResolvedMod = DataHandler::Get()->GetModByFormID(tempRefID);
-							if (!mod && newResolvedMod)
+							if (!mod) 
 							{
-								mod = newResolvedMod;
+								mod = refMod;
 								_MESSAGE("ArrayID %d was owned by an unloaded mod. Assigning ownership to mod %s",
 										 arrayID, mod ? mod->name : "Runtime");
 							}
 
-							if (newResolvedMod) {
-								modArray[refIdx++] = newResolvedMod;
+							modArray[refIdx++] = refMod;
 
-								if (g_showFileSizeWarning) {
-									auto& numVars = varCountMap[newResolvedMod];
-									numVars++;
-									if (numVars > 2000)
-										g_cosaveWarning.mods.insert(newResolvedMod);
-								}
+							if (g_showFileSizeWarning) {
+								auto& numVars = varCountMap[refMod];
+								numVars++;
+								if (numVars > 2000)
+									g_cosaveWarning.mods.insert(refMod);
 							}
 						}
 
