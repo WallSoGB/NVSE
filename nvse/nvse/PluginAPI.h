@@ -12,6 +12,7 @@
 
 struct CommandInfo;
 struct ParamInfo;
+class ModInfo;
 class TESObjectREFR;
 class Script;
 class TESForm;
