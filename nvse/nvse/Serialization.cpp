@@ -1050,4 +1050,7 @@ NVSESerializationInterface	g_NVSESerializationInterface =
 	Serialization::ReadRecord64,
 
 	Serialization::SkipNBytes,
+
+	Serialization::ResolveMod,
+	Serialization::GetModType,
 };

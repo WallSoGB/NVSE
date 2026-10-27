@@ -23,6 +23,7 @@
 #include "InventoryReference.h"
 #include "Hooks_Gameplay.h"
 #include "GameData.h"
+#include "FormUtils.h"
 #else
 #include "Hooks_Script.h"
 #endif
@@ -1081,6 +1082,10 @@ void * PluginManager::GetFunc(UInt32 funcID)
 	case NVSEDataInterface::kNVSEData_PluginFormExtraDataAdd: result = (void*)&FormExtraData::Add; break;
 	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByName: result = (void*)&FormExtraData::RemoveByName; break;
 	case NVSEDataInterface::kNVSEData_PluginFormExtraDataRemoveByPtr: result = (void*)&FormExtraData::RemoveByPtr; break;
+#if RUNTIME
+	case NVSEDataInterface::kNVSEData_AdjustFormIDForMod: result = (void*)&FormUtils::AdjustFormIDForMod; break;
+	case NVSEDataInterface::kNVSEData_AdjustFormIDForModByName: result = (void*)&FormUtils::AdjustFormIDForModByName; break;
+#endif
 	}
 	return result;
 }
